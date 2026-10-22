@@ -2,4 +2,7 @@ node_modules
 dist
 .env
 .env.local
-.DS_Store
+git/
+gitignore
+src/pages/*.backup
+src/pages/*.pre-layout-fix
