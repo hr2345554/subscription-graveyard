@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String
+  avatar        String?
+  googleId      String         @unique @map("google_id")
+  currency      String         @default("USD")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  subscriptions Subscription[]
+  activityLogs  ActivityLog[]
+  @@map("users")
+}
+
+model Subscription {
+  id                 String    @id @default(cuid())
+  userId             String    @map("user_id")
+  name               String
+  description        String?
+  price              Decimal   @db.Decimal(10, 2)
+  currency           String    @default("USD")
+  billingFrequency   String    @map("billing_frequency") @default("monthly")
+  category           String    @default("other")
+  status             String    @default("active")
+  websiteUrl         String?   @map("website_url")
+  notes              String?
+  startDate          DateTime  @map("start_date")
+  renewalDate        DateTime  @map("renewal_date")
+  cancellationDate   DateTime? @map("cancellation_date")
+  cancellationReason String?   @map("cancellation_reason")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activity           ActivityLog[]
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, renewalDate])
+  @@map("subscriptions")
+}
+
+model ActivityLog {
+  id               String       @id @default(cuid())
+  userId           String       @map("user_id")
+  subscriptionId   String       @map("subscription_id")
+  subscriptionName String       @map("subscription_name")
+  action           String
+  details          String?
+  createdAt        DateTime     @default(now()) @map("created_at")
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription     Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@map("activity_logs")
+}
