@@ -4,6 +4,8 @@ import {
   useRef,
   useState,
 } from 'react';
+import { forgotPassword, resetPassword } from '../api/auth';
+import { Modal } from '../components/ui/Modal';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -18,8 +20,8 @@ import {
   Moon,
   ShieldCheck,
   Sun,
-  RotateCcw,
   Skull,
+  Loader2, // <-- Loader Icon add kiya hai
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useNavigate } from 'react-router-dom';
@@ -42,35 +44,6 @@ const authSchema = z.object({
 
 type AuthValues = z.infer<typeof authSchema>;
 
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        id: {
-          initialize: (options: {
-            client_id: string;
-            callback: (response: { credential: string }) => void;
-            auto_select?: boolean;
-            cancel_on_tap_outside?: boolean;
-          }) => void;
-          renderButton: (
-            element: HTMLElement,
-            options: {
-              type?: 'standard' | 'icon';
-              theme?: 'outline' | 'filled_blue' | 'filled_black';
-              size?: 'large' | 'medium' | 'small';
-              shape?: 'rectangular' | 'pill' | 'circle' | 'square';
-              text?: 'signin_with' | 'signup_with' | 'continue_with' | 'signin';
-              width?: number;
-              logo_alignment?: 'left' | 'center';
-            },
-          ) => void;
-        };
-      };
-    };
-  }
-}
-
 function createUser(email: string, name?: string, avatar?: string) {
   const cleanEmail = email.trim().toLowerCase();
 
@@ -84,38 +57,6 @@ function createUser(email: string, name?: string, avatar?: string) {
     ...(avatar ? { avatar } : {}),
     currency: 'USD',
     createdAt: new Date().toISOString(),
-  };
-}
-
-function decodeGoogleCredential(credential: string): {
-  email?: string;
-  name?: string;
-  picture?: string;
-  email_verified?: boolean;
-} {
-  const payload = credential.split('.')[1];
-
-  if (!payload) {
-    throw new Error('Google returned an invalid sign-in response.');
-  }
-
-  const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
-  const bytes = atob(padded);
-
-  const decoded = decodeURIComponent(
-    Array.from(bytes)
-      .map((character) =>
-        `%${character.charCodeAt(0).toString(16).padStart(2, '0')}`,
-      )
-      .join(''),
-  );
-
-  return JSON.parse(decoded) as {
-    email?: string;
-    name?: string;
-    picture?: string;
-    email_verified?: boolean;
   };
 }
 
@@ -143,29 +84,6 @@ function getPasswordStrength(password: string) {
   return { score: 3, label: 'Strong', className: 'strong' };
 }
 
-function GoogleMark() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 48 48" className="google-mark">
-      <path
-        fill="#4285F4"
-        d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11a9.4 9.4 0 0 1-4.1 6.2v5.1h6.6c3.9-3.6 6.1-8.8 6.1-15Z"
-      />
-      <path
-        fill="#34A853"
-        d="M24 44c5.5 0 10.1-1.8 13.5-4.8l-6.6-5.1c-1.8 1.2-4.1 2-6.9 2-5.3 0-9.8-3.6-11.4-8.4H5.8v5.3A20 20 0 0 0 24 44Z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M12.6 27.7a12 12 0 0 1 0-7.4V15H5.8a20 20 0 0 0 0 18l6.8-5.3Z"
-      />
-      <path
-        fill="#EA4335"
-        d="M24 11.9c3 0 5.7 1 7.8 3.1l5.8-5.8A19.4 19.4 0 0 0 24 4 20 20 0 0 0 5.8 15l6.8 5.3C14.2 15.5 18.7 11.9 24 11.9Z"
-      />
-    </svg>
-  );
-}
-
 export function Login() {
   const navigate = useNavigate();
   const { login, signup } = useAuth();
@@ -174,9 +92,21 @@ export function Login() {
 
   const [mode, setMode] = useState<AuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
-  const [showResetNote, setShowResetNote] = useState(false);
+  
+  // Reset Password States
+  const [showReset, setShowReset] = useState(false);
+  const [resetStep, setResetStep] = useState(1);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resetSuccess, setResetSuccess] = useState('');
+  
+  // Naye Loading States
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
   const [submitError, setSubmitError] = useState('');
-  const [googleMessage, setGoogleMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
@@ -184,12 +114,7 @@ export function Login() {
     ReturnType<typeof createUser> | null
   >(null);
 
-  const googleButtonRef = useRef<HTMLDivElement>(null);
   const finishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as
-    | string
-    | undefined;
 
   const {
     register,
@@ -214,7 +139,6 @@ export function Login() {
       setSuccessUser(user);
       setIsSuccess(true);
       setSubmitError('');
-      setGoogleMessage('');
 
       if (!reduceMotion) {
         confetti({
@@ -228,8 +152,8 @@ export function Login() {
       }
 
       finishTimerRef.current = setTimeout(() => {
-  navigate('/dashboard', { replace: true });
-}, reduceMotion ? 300 : 1700);
+        navigate('/dashboard', { replace: true });
+      }, reduceMotion ? 300 : 1700);
     },
     [navigate, reduceMotion]
   );
@@ -242,113 +166,34 @@ export function Login() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!googleClientId || !googleButtonRef.current) return;
+  const onSubmit = handleSubmit(async (values) => {
+    setSubmitError('');
+    setIsLoading(true);
 
-    let cancelled = false;
-
-    const renderGoogleButton = () => {
-      if (cancelled || !window.google || !googleButtonRef.current) return;
-
-      googleButtonRef.current.replaceChildren();
-
-      window.google.accounts.id.initialize({
-        client_id: googleClientId,
-        cancel_on_tap_outside: true,
-        callback: (response) => {
-          try {
-            const profile = decodeGoogleCredential(response.credential);
-
-            if (!profile.email || profile.email_verified !== true) {
-              setGoogleMessage(
-                'Google could not verify this email. Please try another account.',
-              );
-              setShakeKey((value) => value + 1);
-              return;
-            }
-
-            finishSignIn(
-              createUser(profile.email, profile.name, profile.picture),
-            );
-          } catch {
-            setGoogleMessage(
-              'We could not complete Google sign-in. Please try again.',
-            );
-          }
-        },
-      });
-
-      window.google.accounts.id.renderButton(googleButtonRef.current, {
-        type: 'standard',
-        theme: 'outline',
-        size: 'large',
-        shape: 'pill',
-        text: 'continue_with',
-        width: Math.min(
-          Math.max(googleButtonRef.current.clientWidth, 220),
-          420,
-        ),
-        logo_alignment: 'left',
-      });
-    };
-
-    if (window.google) {
-      renderGoogleButton();
-    } else {
-      let script = document.querySelector<HTMLScriptElement>(
-        'script[data-google-identity]',
-      );
-
-      if (!script) {
-        script = document.createElement('script');
-        script.src = 'https://accounts.google.com/gsi/client';
-        script.async = true;
-        script.defer = true;
-        script.dataset.googleIdentity = 'true';
-        document.head.appendChild(script);
+    try {
+      if (mode === 'login') {
+        await login(values.email, values.password);
+      } else {
+        await signup(values.email, values.password);
       }
 
-      script.addEventListener('load', renderGoogleButton);
+      finishSignIn(createUser(values.email));
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Unable to authenticate. Please try again.';
+
+      setSubmitError(message);
+      setShakeKey((value) => value + 1);
+    } finally {
+      setIsLoading(false);
     }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [googleClientId, finishSignIn]);
-
-  
-const onSubmit = handleSubmit(async (values) => {
-  setSubmitError('');
-  setGoogleMessage('');
-  setShowResetNote(false);
-  setIsLoading(true);
-
-  try {
-    if (mode === 'login') {
-      await login(values.email, values.password);
-    } else {
-      await signup(values.email, values.password);
-    }
-
-    finishSignIn(createUser(values.email));
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'Unable to authenticate. Please try again.';
-
-    setSubmitError(message);
-    setShakeKey((value) => value + 1);
-  } finally {
-    setIsLoading(false);
-  }
-});
+  });
 
   const changeMode = (nextMode: AuthMode) => {
     setMode(nextMode);
     setSubmitError('');
-    setGoogleMessage('');
-    setShowResetNote(false);
     setShowPassword(false);
     clearErrors();
     reset({ email, password: '' });
@@ -366,15 +211,12 @@ const onSubmit = handleSubmit(async (values) => {
     >
       <section
         className={`auth-scene ${
-          submitError || googleMessage ? 'is-error' : ''
+          submitError ? 'is-error' : ''
         } ${isSuccess ? 'is-success' : ''}`}
         aria-label="Subscription app animation"
       >
         <div className="auth-scene-overlay" />
-
         <OrbitingSubscriptions />
-
-        {/* Scene branding removed. Auth card emblem is preserved. */}
 
         <div className="scene-copy">
           <motion.div
@@ -418,9 +260,6 @@ const onSubmit = handleSubmit(async (values) => {
           aria-label={`Switch to ${
             resolvedTheme === 'dark' ? 'light' : 'dark'
           } mode`}
-          title={`Switch to ${
-            resolvedTheme === 'dark' ? 'light' : 'dark'
-          } mode`}
         >
           {resolvedTheme === 'dark' ? (
             <Sun size={17} />
@@ -443,20 +282,16 @@ const onSubmit = handleSubmit(async (values) => {
                 transition={{ duration: reduceMotion ? 0.15 : 0.45 }}
               >
                 <div className="success-beam" />
-
                 <div className="success-symbol">
                   <Check size={28} strokeWidth={2.2} />
                 </div>
-
                 <span className="auth-kicker">YOU'RE ALL SET</span>
                 <h2>Welcome back.</h2>
-
                 <p>
                   {successUser?.name
                     ? `Good to have you here, ${successUser.name}.`
                     : 'Your subscriptions are ready to manage.'}
                 </p>
-
                 <div className="success-loading">
                   <span />
                   Preparing your dashboard…
@@ -490,51 +325,24 @@ const onSubmit = handleSubmit(async (values) => {
                 }}
               >
                 <div className="auth-card-top">
-                  {/* Keep the skull emblem inside the auth card */}
                   <div className="auth-card-emblem" aria-hidden="true">
                     <Skull size={38} strokeWidth={1.8} />
                   </div>
-
                   <span className="auth-kicker">
                     {mode === 'login'
                       ? 'YOUR SUBSCRIPTIONS AWAIT'
                       : 'START FRESH'}
                   </span>
-
                   <h2>
                     {mode === 'login'
                       ? 'Welcome back'
                       : 'Create your account'}
                   </h2>
-
                   <p>
                     {mode === 'login'
                       ? 'Sign in to take control of recurring costs.'
                       : 'Bring all your subscriptions into one place.'}
                   </p>
-                </div>
-
-                <div className="auth-google-area">
-                  {googleClientId ? (
-                    <div
-                      className="google-real-button"
-                      ref={googleButtonRef}
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      className="google-fallback-button"
-                      onClick={() =>
-                        setGoogleMessage(
-                          'Google sign-in needs a configured OAuth client ID. Add VITE_GOOGLE_CLIENT_ID to your .env file first.',
-                        )
-                      }
-                    >
-                      <GoogleMark />
-                      <span>Continue with Google</span>
-                      <span className="google-button-spacer" />
-                    </button>
-                  )}
                 </div>
 
                 <div className="auth-divider">
@@ -543,11 +351,7 @@ const onSubmit = handleSubmit(async (values) => {
                   <span />
                 </div>
 
-                <form
-                  onSubmit={onSubmit}
-                  noValidate
-                  className="auth-form"
-                >
+                <form onSubmit={onSubmit} noValidate className="auth-form">
                   <motion.div
                     className={`auth-field ${
                       errors.email ? 'has-error' : ''
@@ -556,33 +360,22 @@ const onSubmit = handleSubmit(async (values) => {
                         ? 'is-valid'
                         : ''
                     }`}
-                    initial={
-                      reduceMotion ? false : { opacity: 0, y: 8 }
-                    }
+                    initial={reduceMotion ? false : { opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: reduceMotion ? 0 : 0.12 }}
                   >
                     <Mail className="auth-field-icon" size={17} />
-
                     <input
                       id="auth-email"
                       type="email"
                       autoComplete="email"
                       placeholder=" "
                       aria-invalid={!!errors.email}
-                      aria-describedby={
-                        errors.email ? 'email-error' : undefined
-                      }
                       {...register('email')}
                     />
-
                     <label htmlFor="auth-email">Email address</label>
-
                     {touchedFields.email && !errors.email && email && (
-                      <Check
-                        className="auth-field-check"
-                        size={16}
-                      />
+                      <Check className="auth-field-check" size={16} />
                     )}
                   </motion.div>
 
@@ -592,11 +385,7 @@ const onSubmit = handleSubmit(async (values) => {
                         id="email-error"
                         className="auth-field-error"
                         initial={{ opacity: 0, height: 0, y: -4 }}
-                        animate={{
-                          opacity: 1,
-                          height: 'auto',
-                          y: 0,
-                        }}
+                        animate={{ opacity: 1, height: 'auto', y: 0 }}
                         exit={{ opacity: 0, height: 0 }}
                       >
                         {errors.email.message}
@@ -608,17 +397,11 @@ const onSubmit = handleSubmit(async (values) => {
                     className={`auth-field ${
                       errors.password ? 'has-error' : ''
                     }`}
-                    initial={
-                      reduceMotion ? false : { opacity: 0, y: 8 }
-                    }
+                    initial={reduceMotion ? false : { opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: reduceMotion ? 0 : 0.2 }}
                   >
-                    <LockKeyhole
-                      className="auth-field-icon"
-                      size={17}
-                    />
-
+                    <LockKeyhole className="auth-field-icon" size={17} />
                     <input
                       id="auth-password"
                       type={showPassword ? 'text' : 'password'}
@@ -629,25 +412,13 @@ const onSubmit = handleSubmit(async (values) => {
                       }
                       placeholder=" "
                       aria-invalid={!!errors.password}
-                      aria-describedby={
-                        errors.password
-                          ? 'password-error'
-                          : undefined
-                      }
                       {...register('password')}
                     />
-
                     <label htmlFor="auth-password">Password</label>
-
                     <button
                       className="password-visibility"
                       type="button"
-                      onClick={() =>
-                        setShowPassword((value) => !value)
-                      }
-                      aria-label={
-                        showPassword ? 'Hide password' : 'Show password'
-                      }
+                      onClick={() => setShowPassword((value) => !value)}
                     >
                       {showPassword ? (
                         <EyeOff size={17} />
@@ -663,11 +434,7 @@ const onSubmit = handleSubmit(async (values) => {
                         id="password-error"
                         className="auth-field-error"
                         initial={{ opacity: 0, height: 0, y: -4 }}
-                        animate={{
-                          opacity: 1,
-                          height: 'auto',
-                          y: 0,
-                        }}
+                        animate={{ opacity: 1, height: 'auto', y: 0 }}
                         exit={{ opacity: 0, height: 0 }}
                       >
                         {errors.password.message}
@@ -694,10 +461,7 @@ const onSubmit = handleSubmit(async (values) => {
                           />
                         ))}
                       </div>
-
-                      <span
-                        className={`strength-label ${strength.className}`}
-                      >
+                      <span className={`strength-label ${strength.className}`}>
                         {strength.label}
                       </span>
                     </motion.div>
@@ -706,12 +470,16 @@ const onSubmit = handleSubmit(async (values) => {
                   {mode === 'login' && (
                     <div className="auth-forgot-row">
                       <span>Forgot your password?</span>
-
                       <button
                         type="button"
-                        onClick={() =>
-                          setShowResetNote((value) => !value)
-                        }
+                        onClick={() => {
+                          const currentEmail = watch('email');
+                          setResetEmail(currentEmail || '');
+                          setShowReset(true);
+                          setResetStep(1);
+                          setResetError('');
+                          setResetSuccess('');
+                        }}
                       >
                         Reset it
                       </button>
@@ -719,54 +487,16 @@ const onSubmit = handleSubmit(async (values) => {
                   )}
 
                   <AnimatePresence>
-                    {showResetNote && mode === 'login' && (
-                      <motion.div
-                        className="auth-reset-note"
-                        initial={{
-                          opacity: 0,
-                          y: -5,
-                          height: 0,
-                        }}
-                        animate={{
-                          opacity: 1,
-                          y: 0,
-                          height: 'auto',
-                        }}
-                        exit={{
-                          opacity: 0,
-                          y: -5,
-                          height: 0,
-                        }}
-                      >
-                        <RotateCcw size={15} />
-                        Demo mode: reset link would be sent.
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <AnimatePresence>
-                    {(submitError || googleMessage) && (
+                    {submitError && (
                       <motion.div
                         className="auth-error-banner"
                         role="alert"
-                        initial={{
-                          opacity: 0,
-                          y: -6,
-                          height: 0,
-                        }}
-                        animate={{
-                          opacity: 1,
-                          y: 0,
-                          height: 'auto',
-                        }}
-                        exit={{
-                          opacity: 0,
-                          y: -6,
-                          height: 0,
-                        }}
+                        initial={{ opacity: 0, y: -6, height: 0 }}
+                        animate={{ opacity: 1, y: 0, height: 'auto' }}
+                        exit={{ opacity: 0, y: -6, height: 0 }}
                       >
                         <span className="error-dot" />
-                        {submitError || googleMessage}
+                        {submitError}
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -775,21 +505,14 @@ const onSubmit = handleSubmit(async (values) => {
                     className="auth-submit"
                     type="submit"
                     disabled={isLoading}
-                    whileHover={
-                      reduceMotion ? undefined : { y: -2 }
-                    }
-                    whileTap={
-                      reduceMotion ? undefined : { scale: 0.985 }
-                    }
+                    whileHover={reduceMotion ? undefined : { y: -2 }}
+                    whileTap={reduceMotion ? undefined : { scale: 0.985 }}
                   >
                     <span className="submit-shimmer" />
-
                     {isLoading ? (
                       <>
                         <span className="auth-spinner" />
-                        {mode === 'login'
-                          ? 'Signing in…'
-                          : 'Creating account…'}
+                        {mode === 'login' ? 'Signing in…' : 'Creating account…'}
                       </>
                     ) : (
                       <>
@@ -806,13 +529,10 @@ const onSubmit = handleSubmit(async (values) => {
                       ? 'New around here?'
                       : 'Already have an account?'}
                   </span>
-
                   <button
                     type="button"
                     onClick={() =>
-                      changeMode(
-                        mode === 'login' ? 'signup' : 'login',
-                      )
+                      changeMode(mode === 'login' ? 'signup' : 'login')
                     }
                   >
                     {mode === 'login' ? 'Sign up' : 'Log in'}
@@ -821,9 +541,7 @@ const onSubmit = handleSubmit(async (values) => {
 
                 <div className="auth-trust-note">
                   <ShieldCheck size={14} />
-                  <span>
-                    Your money. Your choices. Your peace of mind.
-                  </span>
+                  <span>Your money. Your choices. Your peace of mind.</span>
                 </div>
               </motion.div>
             )}
@@ -831,13 +549,219 @@ const onSubmit = handleSubmit(async (values) => {
         </div>
 
         <div className="auth-panel-footer">
-          <span>
-            © {new Date().getFullYear()} Subscription Graveyard
-          </span>
+          <span>© {new Date().getFullYear()} Subscription Graveyard</span>
           <span className="footer-separator">·</span>
           <span>Your subscriptions, under control.</span>
         </div>
       </section>
+
+      {/* =========================================
+          PREMIUM PASSWORD RESET MODAL (With Animations)
+          ========================================= */}
+      <Modal 
+        isOpen={showReset} 
+        onClose={() => {
+          if(!isSendingCode && !isUpdatingPassword) setShowReset(false);
+        }} 
+        title="Reset Password"
+      >
+        <form onSubmit={(e) => e.preventDefault()} autoComplete="off">
+          {/* Yahan AnimatePresence mode="wait" lagaya hai taake step change par animation ho */}
+          <AnimatePresence mode="wait">
+            {resetStep === 1 ? (
+              <motion.div
+                key="step1"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="space-y-5 pt-2"
+              >
+                <div className="text-center mb-6">
+                  <div className="w-12 h-12 bg-accent-blue/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Mail className="text-accent-blue w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-text-primary">Forgot Password?</h3>
+                  <p className="text-sm text-text-secondary mt-1">
+                    Enter your registered email. We'll send you a secure code.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-text-primary ml-1">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    placeholder="example@email.com"
+                    autoComplete="off"
+                    disabled={isSendingCode}
+                    className="w-full p-3 border border-border rounded-xl bg-bg-surface text-text-primary placeholder:text-text-muted focus:ring-2 focus:ring-accent-blue/30 outline-none transition-all disabled:opacity-50"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  disabled={isSendingCode || !resetEmail}
+                  onClick={async () => {
+                    try {
+                      setIsSendingCode(true); // Loading start
+                      setResetError('');
+                      setResetSuccess('');
+                      await forgotPassword(resetEmail);
+                      setResetStep(2); // Next step
+                    } catch (err: any) { 
+                      setResetError(err.message || 'Email bhejne mein error aaya.'); 
+                    } finally {
+                      setIsSendingCode(false); // Loading end
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-3 mt-2 bg-accent-blue text-white rounded-xl font-semibold hover:brightness-110 transition-all shadow-lg shadow-accent-blue/20 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {isSendingCode ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    'Send Reset Code'
+                  )}
+                </button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="step2"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="space-y-5 pt-2"
+              >
+                <div className="text-center mb-6">
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
+                    className="w-12 h-12 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-3"
+                  >
+                    <ShieldCheck className="text-success w-6 h-6" />
+                  </motion.div>
+                  <h3 className="text-lg font-bold text-text-primary">Check Your Email</h3>
+                  <p className="text-sm text-text-secondary mt-1">
+                    We sent a 6-digit code to <strong className="text-text-primary">{resetEmail}</strong>.
+                  </p>
+                </div>
+
+                <AnimatePresence>
+                  {resetSuccess && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="p-3 bg-success/10 border border-success/20 rounded-xl text-sm text-success text-center font-medium"
+                    >
+                      {resetSuccess}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-text-primary ml-1">
+                    6-Digit Code
+                  </label>
+                  <input
+                    type="text"
+                    value={resetCode}
+                    onChange={(e) => setResetCode(e.target.value)}
+                    placeholder="e.g. 123456"
+                    maxLength={6}
+                    disabled={isUpdatingPassword}
+                    // YEH LINE BROWSER KO ROKEGI:
+                    autoComplete="new-password"
+                    spellCheck={false}
+                    className="w-full p-3 border border-border rounded-xl bg-bg-surface text-text-primary text-center tracking-[0.5em] text-xl font-bold focus:ring-2 focus:ring-accent-blue/30 outline-none transition-all disabled:opacity-50"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-text-primary ml-1">
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter your new password"
+                    disabled={isUpdatingPassword}
+                    // YAHAN BHI BROWSER KO ROKA HAI:
+                    autoComplete="new-password"
+                    className="w-full p-3 border border-border rounded-xl bg-bg-surface text-text-primary placeholder:text-text-muted focus:ring-2 focus:ring-accent-blue/30 outline-none transition-all disabled:opacity-50"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  disabled={isUpdatingPassword || !resetCode || !newPassword}
+                  onClick={async () => {
+                    try {
+                      setIsUpdatingPassword(true); // Loading start
+                      setResetError('');
+                      await resetPassword(resetEmail, resetCode, newPassword);
+                      setResetSuccess('Password successfully updated!');
+                      setTimeout(() => {
+                        setShowReset(false);
+                        setResetStep(1);
+                      }, 2000);
+                    } catch (err: any) { 
+                      setResetError(err.message || 'Password change nahi ho paya.'); 
+                    } finally {
+                      setIsUpdatingPassword(false); // Loading end
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-3 mt-2 bg-success text-white rounded-xl font-semibold hover:brightness-110 transition-all shadow-lg shadow-success/20 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {isUpdatingPassword ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Update Password'
+                  )}
+                </button>
+
+                <div className="text-center mt-2">
+                  <button
+                    type="button"
+                    disabled={isUpdatingPassword}
+                    onClick={() => setResetStep(1)}
+                    className="text-xs text-text-secondary hover:text-accent-blue hover:underline transition-all disabled:opacity-50"
+                  >
+                    ← Back to email
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          <AnimatePresence>
+            {resetError && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
+                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                className="p-3 bg-danger/10 border border-danger/20 rounded-xl text-sm text-danger text-center font-medium"
+              >
+                {resetError}
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+        </form>
+      </Modal>
+
     </main>
   );
 }

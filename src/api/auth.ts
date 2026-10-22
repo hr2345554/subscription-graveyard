@@ -65,3 +65,21 @@ export function logout(): void {
   localStorage.removeItem('sub_graveyard_token');
   localStorage.removeItem('sub_graveyard_user');
 }
+export async function forgotPassword(email: string) {
+  return await apiRequest('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPassword(email: string, code: string, newPassword: string) {
+  return await apiRequest('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ email, code, newPassword }),
+  });
+}
+export async function deleteAccount() {
+  return await apiRequest('/auth/delete-account', {
+    method: 'DELETE',
+  });
+}
