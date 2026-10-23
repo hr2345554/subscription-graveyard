@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { LayoutDashboard, CreditCard, Skull, BarChart3, Settings, LogOut, Skull as LogoIcon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -15,54 +17,105 @@ const navItems = [
 export function Sidebar() {
   const location = useLocation();
   const { logout, user } = useAuth();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 bg-bg-elevated border-r border-border p-4">
-      <div className="flex items-center gap-3 px-3 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-blue to-accent-violet flex items-center justify-center shadow-lg shadow-accent-blue/20">
-          <LogoIcon className="w-5 h-5 text-white" />
-        </div>
-        <div>
-          <h1 className="font-bold text-text-primary text-lg leading-tight">Sub Graveyard</h1>
-          <p className="text-[10px] text-text-muted uppercase tracking-wider">Track • Cancel • Save</p>
-        </div>
-      </div>
-
-      <nav className="flex-1 space-y-1">
-        {navItems.map(item => {
-          const isActive = location.pathname === item.to;
-          return (
-            <NavLink key={item.to} to={item.to} className="relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group">
-              {isActive && (
-                <motion.div layoutId="sidebar-active"
-                  className="absolute inset-0 bg-accent-blue/10 border border-accent-blue/20 rounded-xl"
-                  transition={{ type: 'spring', damping: 20, stiffness: 300 }} />
-              )}
-              <item.icon className={`w-5 h-5 relative z-10 ${isActive ? 'text-accent-blue' : 'text-text-muted group-hover:text-text-secondary'}`} />
-              <span className={`relative z-10 ${isActive ? 'text-accent-blue' : 'text-text-secondary group-hover:text-text-primary'}`}>
-                {item.label}
-              </span>
-            </NavLink>
-          );
-        })}
-      </nav>
-
-      <div className="border-t border-border pt-4 mt-4">
-        <div className="flex items-center gap-3 px-3 mb-3">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-blue to-accent-violet flex items-center justify-center text-white text-xs font-bold">
-            {user?.name?.charAt(0) || 'U'}
+    <>
+      <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 bg-bg-elevated border-r border-border p-4">
+        
+        {/* =========================================
+            BRAND HEADER (Dark Logo + Netflix Style Text)
+            ========================================= */}
+        <div className="flex items-center gap-3 px-2 mb-8 mt-2">
+          
+          {/* DARK LOGO (Matching Login Page) */}
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#0a0813] border border-[#8b5cf6]/40 shadow-[0_8px_20px_rgba(0,0,0,0.6),0_0_15px_rgba(139,92,246,0.15)]">
+            <LogoIcon className="h-6 w-6 text-white stroke-[2.5] drop-shadow-md" />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-text-primary truncate">{user?.name || 'User'}</p>
-            <p className="text-xs text-text-muted truncate">{user?.email || ''}</p>
+          
+          {/* Brand Text */}
+          <div className="flex flex-col">
+            <h1 className="text-[14px] font-black leading-tight tracking-tight text-text-primary uppercase">
+              SUB <span className="text-[#E50914]">GRAVEYARD</span>
+            </h1>
+            <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.15em] text-text-muted">
+              Track • Cancel • Save
+            </p>
           </div>
         </div>
-        <button onClick={logout}
-          className="flex items-center gap-2 px-3 py-2 w-full rounded-xl text-sm text-text-muted hover:text-danger hover:bg-danger/10 transition-all">
-          <LogOut className="w-4 h-4" /> Sign Out
-        </button>
-      </div>
-    </aside>
+        {/* ========================================= */}
+
+        <nav className="flex-1 space-y-1">
+          {navItems.map(item => {
+            const isActive = location.pathname === item.to;
+            return (
+              <NavLink key={item.to} to={item.to} className="relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group">
+                {isActive && (
+                  <motion.div layoutId="sidebar-active"
+                    className="absolute inset-0 bg-accent-blue/10 border border-accent-blue/20 rounded-xl"
+                    transition={{ type: 'spring', damping: 20, stiffness: 300 }} />
+                )}
+                <item.icon className={`w-5 h-5 relative z-10 ${isActive ? 'text-accent-blue' : 'text-text-muted group-hover:text-text-secondary'}`} />
+                <span className={`relative z-10 ${isActive ? 'text-accent-blue' : 'text-text-secondary group-hover:text-text-primary'}`}>
+                  {item.label}
+                </span>
+              </NavLink>
+            );
+          })}
+        </nav>
+
+        <div className="border-t border-border pt-4 mt-4">
+          <div className="flex items-center gap-3 px-3 mb-3">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-blue to-accent-violet flex items-center justify-center text-white text-xs font-bold">
+              {user?.name?.charAt(0) || 'U'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-text-primary truncate">{user?.name || 'User'}</p>
+              <p className="text-xs text-text-muted truncate">{user?.email || ''}</p>
+            </div>
+          </div>
+          
+          <button onClick={() => setShowLogoutModal(true)}
+            className="flex items-center gap-2 px-3 py-2 w-full rounded-xl text-sm text-text-muted hover:text-danger hover:bg-danger/10 transition-all">
+            <LogOut className="w-4 h-4" /> Sign Out
+          </button>
+        </div>
+      </aside>
+
+      {/* Logout Confirmation Modal */}
+      <Modal 
+        isOpen={showLogoutModal} 
+        onClose={() => setShowLogoutModal(false)} 
+        title="Sign Out"
+        size="sm"
+      >
+        <div className="space-y-4 pt-2">
+          <p className="text-sm font-semibold text-text-primary text-center">
+            Are you sure you want to sign out?
+          </p>
+          <p className="text-xs text-text-secondary text-center">
+            You will need to log in again to access your subscriptions.
+          </p>
+          <div className="flex justify-end gap-3 mt-6">
+            <Button 
+              variant="ghost" 
+              onClick={() => setShowLogoutModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="danger" 
+              onClick={() => {
+                setShowLogoutModal(false);
+                logout();
+              }}
+            >
+              Sign Out
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 }
 

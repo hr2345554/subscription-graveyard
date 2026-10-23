@@ -1,5 +1,4 @@
-﻿
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   CalendarClock,
@@ -114,26 +113,26 @@ export default function Dashboard() {
   const [selectedCategory, setSelectedCategory] = useState('All categories');
   const [selectedCurrency, setSelectedCurrency] = useState('All currencies');
   const [exchangeRates, setExchangeRates] = useState<Record<string, number> | null>(null);
-const [exchangeRateError, setExchangeRateError] = useState(false);
+  const [exchangeRateError, setExchangeRateError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [lastSuccessfulSync, setLastSuccessfulSync] = useState<Date | null>(
-    null,
-  );
+  const [lastSuccessfulSync, setLastSuccessfulSync] = useState<Date | null>(null);
+
   const convertToUSD = useCallback(
-  (amount: number, currency: string): number | null => {
-    const code = currency.toUpperCase();
+    (amount: number, currency: string): number | null => {
+      const code = currency.toUpperCase();
 
-    if (code === 'USD') return amount;
+      if (code === 'USD') return amount;
 
-    const rate = exchangeRates?.[code];
+      const rate = exchangeRates?.[code];
 
-    if (!rate || !Number.isFinite(rate)) return null;
+      if (!rate || !Number.isFinite(rate)) return null;
 
-    return amount / rate;
-  },
-  [exchangeRates],
-);
+      return amount / rate;
+    },
+    [exchangeRates],
+  );
+
   useEffect(() => {
     let mounted = true;
 
@@ -161,26 +160,22 @@ const [exchangeRateError, setExchangeRateError] = useState(false);
 
     void loadSubscriptionsData();
 
-    const interval = window.setInterval(() => {
-      void loadSubscriptionsData();
-    }, 2000);
+    // ⚠️ YAHAN SE setInterval HATA DIYA HAI TAAKE 429 ERROR NA AAYE
 
     window.addEventListener('storage', loadSubscriptionsData);
 
     return () => {
       mounted = false;
-      window.clearInterval(interval);
       window.removeEventListener('storage', loadSubscriptionsData);
     };
   }, []);
+
   useEffect(() => {
     let cancelled = false;
 
     async function loadExchangeRates() {
       try {
-        const response = await fetch(
-          'https://open.er-api.com/v6/latest/USD',
-        );
+        const response = await fetch('https://open.er-api.com/v6/latest/USD');
 
         if (!response.ok) {
           throw new Error('Exchange rate request failed');
@@ -211,6 +206,7 @@ const [exchangeRateError, setExchangeRateError] = useState(false);
       cancelled = true;
     };
   }, []);
+
   const activeSubscriptions = useMemo(
     () =>
       subscriptions.filter(
@@ -247,6 +243,7 @@ const [exchangeRateError, setExchangeRateError] = useState(false);
   );
 
   const multiplier = view === 'Annual' ? 12 : 1;
+  
   const totalSpend = filteredSubscriptions.reduce((total, sub) => {
     const monthlyAmount = getMonthlyAmount(sub);
     const usdAmount = convertToUSD(monthlyAmount, sub.currency);
@@ -273,7 +270,7 @@ const [exchangeRateError, setExchangeRateError] = useState(false);
     [filteredSubscriptions],
   );
 
-    const categoryTotals = useMemo(() => {
+  const categoryTotals = useMemo(() => {
     const totals: Record<string, number> = {};
 
     filteredSubscriptions.forEach((sub) => {
@@ -282,8 +279,7 @@ const [exchangeRateError, setExchangeRateError] = useState(false);
 
       if (usdAmount === null) return;
 
-      totals[category] =
-        (totals[category] || 0) + usdAmount * multiplier;
+      totals[category] = (totals[category] || 0) + usdAmount * multiplier;
     });
 
     return totals;
@@ -316,10 +312,7 @@ const [exchangeRateError, setExchangeRateError] = useState(false);
     });
   }, [totalSpend]);
 
-  const maxTrendSpend = Math.max(
-    ...trendData.map((item) => item.amount),
-    1,
-  );
+  const maxTrendSpend = Math.max(...trendData.map((item) => item.amount), 1);
 
   return (
     <main className="min-h-screen bg-bg-primary p-4 text-text-primary sm:p-6 lg:p-8">
@@ -433,7 +426,7 @@ const [exchangeRateError, setExchangeRateError] = useState(false);
           </div>
         )}
 
-               {exchangeRateError && (
+        {exchangeRateError && (
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-600 dark:text-amber-400">
             Exchange rates could not load. Some subscriptions may be excluded from USD totals.
           </div>

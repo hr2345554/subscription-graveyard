@@ -21,7 +21,7 @@ import {
   ShieldCheck,
   Sun,
   Skull,
-  Loader2, // <-- Loader Icon add kiya hai
+  Loader2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useNavigate } from 'react-router-dom';
@@ -324,10 +324,49 @@ export function Login() {
                   x: { duration: 0.38 },
                 }}
               >
+                {/* =========================================
+                    CUTE DECORATIONS (STICKERS)
+                    ========================================= */}
+                <div className="auth-decorations">
+                  {/* Top Left Cute Flower */}
+                  <svg className="sticker sticker-tl" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C12 2 14 6 17 7C20 8 22 12 22 12C22 12 18 14 17 17C16 20 12 22 12 22C12 22 10 18 7 17C4 16 2 12 2 12C2 12 6 10 7 7C8 4 12 2 12 2Z" fill="#fbcfe8" opacity="0.8"/>
+                    <circle cx="12" cy="12" r="3" fill="#fdf2f8"/>
+                  </svg>
+
+                  {/* Top Right Sparkle/Star */}
+                  <svg className="sticker sticker-tr" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2L13.5 9.5L21 11L13.5 12.5L12 20L10.5 12.5L3 11L10.5 9.5L12 2Z" fill="#c4b5fd" opacity="0.9"/>
+                  </svg>
+
+                  {/* Bottom Left Small Leaf */}
+                  <svg className="sticker sticker-bl" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 22C12 22 16 18 16 12C16 6 12 2 12 2C12 2 8 6 8 12C8 18 12 22 12 22Z" fill="#e9d5ff" opacity="0.6"/>
+                  </svg>
+                  
+                  {/* Bottom Right Cute Ghost */}
+                  <svg className="sticker sticker-br" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C7.58 2 4 5.58 4 10V22L7 19L10 22L12 20L14 22L17 19L20 22V10C20 5.58 16.42 2 12 2Z" fill="#f3e8ff" opacity="0.7"/>
+                    <circle cx="9" cy="10" r="1.5" fill="#a855f7"/>
+                    <circle cx="15" cy="10" r="1.5" fill="#a855f7"/>
+                  </svg>
+                </div>
+                {/* ========================================= */}
+
                 <div className="auth-card-top">
-                  <div className="auth-card-emblem" aria-hidden="true">
-                    <Skull size={38} strokeWidth={1.8} />
+                  {/* =========================================
+                      NETFLIX-STYLE BRAND HEADER (YAHAN CHANGE HAI)
+                      ========================================= */}
+                  <div className="auth-brand-header">
+                    <div className="auth-card-emblem" aria-hidden="true">
+                      <Skull size={32} strokeWidth={2.5} />
+                    </div>
+                    <div className="auth-brand-title">
+                      <h1>Subscription <span>Graveyard</span></h1>
+                    </div>
                   </div>
+                  {/* ========================================= */}
+
                   <span className="auth-kicker">
                     {mode === 'login'
                       ? 'YOUR SUBSCRIPTIONS AWAIT'
@@ -338,17 +377,6 @@ export function Login() {
                       ? 'Welcome back'
                       : 'Create your account'}
                   </h2>
-                  <p>
-                    {mode === 'login'
-                      ? 'Sign in to take control of recurring costs.'
-                      : 'Bring all your subscriptions into one place.'}
-                  </p>
-                </div>
-
-                <div className="auth-divider">
-                  <span />
-                  <span>or continue with email</span>
-                  <span />
                 </div>
 
                 <form onSubmit={onSubmit} noValidate className="auth-form">
@@ -472,6 +500,7 @@ export function Login() {
                       <span>Forgot your password?</span>
                       <button
                         type="button"
+                        className="auth-reset-btn"
                         onClick={() => {
                           const currentEmail = watch('email');
                           setResetEmail(currentEmail || '');
@@ -566,7 +595,6 @@ export function Login() {
         title="Reset Password"
       >
         <form onSubmit={(e) => e.preventDefault()} autoComplete="off">
-          {/* Yahan AnimatePresence mode="wait" lagaya hai taake step change par animation ho */}
           <AnimatePresence mode="wait">
             {resetStep === 1 ? (
               <motion.div
@@ -607,15 +635,15 @@ export function Login() {
                   disabled={isSendingCode || !resetEmail}
                   onClick={async () => {
                     try {
-                      setIsSendingCode(true); // Loading start
+                      setIsSendingCode(true);
                       setResetError('');
                       setResetSuccess('');
                       await forgotPassword(resetEmail);
-                      setResetStep(2); // Next step
+                      setResetStep(2);
                     } catch (err: any) { 
                       setResetError(err.message || 'Email bhejne mein error aaya.'); 
                     } finally {
-                      setIsSendingCode(false); // Loading end
+                      setIsSendingCode(false);
                     }
                   }}
                   className="w-full flex items-center justify-center gap-2 py-3 mt-2 bg-accent-blue text-white rounded-xl font-semibold hover:brightness-110 transition-all shadow-lg shadow-accent-blue/20 disabled:opacity-70 disabled:cursor-not-allowed"
@@ -678,7 +706,6 @@ export function Login() {
                     placeholder="e.g. 123456"
                     maxLength={6}
                     disabled={isUpdatingPassword}
-                    // YEH LINE BROWSER KO ROKEGI:
                     autoComplete="new-password"
                     spellCheck={false}
                     className="w-full p-3 border border-border rounded-xl bg-bg-surface text-text-primary text-center tracking-[0.5em] text-xl font-bold focus:ring-2 focus:ring-accent-blue/30 outline-none transition-all disabled:opacity-50"
@@ -695,7 +722,6 @@ export function Login() {
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Enter your new password"
                     disabled={isUpdatingPassword}
-                    // YAHAN BHI BROWSER KO ROKA HAI:
                     autoComplete="new-password"
                     className="w-full p-3 border border-border rounded-xl bg-bg-surface text-text-primary placeholder:text-text-muted focus:ring-2 focus:ring-accent-blue/30 outline-none transition-all disabled:opacity-50"
                   />
@@ -706,7 +732,7 @@ export function Login() {
                   disabled={isUpdatingPassword || !resetCode || !newPassword}
                   onClick={async () => {
                     try {
-                      setIsUpdatingPassword(true); // Loading start
+                      setIsUpdatingPassword(true);
                       setResetError('');
                       await resetPassword(resetEmail, resetCode, newPassword);
                       setResetSuccess('Password successfully updated!');
@@ -717,7 +743,7 @@ export function Login() {
                     } catch (err: any) { 
                       setResetError(err.message || 'Password change nahi ho paya.'); 
                     } finally {
-                      setIsUpdatingPassword(false); // Loading end
+                      setIsUpdatingPassword(false);
                     }
                   }}
                   className="w-full flex items-center justify-center gap-2 py-3 mt-2 bg-success text-white rounded-xl font-semibold hover:brightness-110 transition-all shadow-lg shadow-success/20 disabled:opacity-70 disabled:cursor-not-allowed"
