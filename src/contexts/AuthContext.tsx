@@ -1,4 +1,3 @@
-
 import React, {
   createContext,
   useContext,
@@ -25,8 +24,9 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 function loadStoredUser(): User | null {
   try {
-    const token = localStorage.getItem('sub_graveyard_token');
-    const stored = localStorage.getItem('sub_graveyard_user');
+    // YAHAN CHANGE KIYA HAI: localStorage -> sessionStorage
+    const token = sessionStorage.getItem('sub_graveyard_token');
+    const stored = sessionStorage.getItem('sub_graveyard_user');
 
     if (!token || !stored) return null;
 

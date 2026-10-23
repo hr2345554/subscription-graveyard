@@ -4,7 +4,8 @@ export const apiRequest = async <T = unknown>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> => {
-  const token = localStorage.getItem('sub_graveyard_token');
+  // YAHAN CHANGE KIYA HAI: localStorage ki jagah sessionStorage
+  const token = sessionStorage.getItem('sub_graveyard_token');
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',

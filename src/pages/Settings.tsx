@@ -5,21 +5,22 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { showToast } from '../components/ui/Toast';
-import { deleteAccount } from '../api/auth'; // <-- Naya Import
-import { User, LogOut, Trash2, Shield, Info, Loader2 } from 'lucide-react';
+import { deleteAccount } from '../api/auth';
+import { User, LogOut, Trash2, Shield, Loader2 } from 'lucide-react';
 
 export function Settings() {
   const { user, logout } = useAuth();
   const [showDelete, setShowDelete] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false); // <-- Naya State
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDeleteAccount = async () => {
     try {
       setIsDeleting(true);
-      await deleteAccount(); // Backend ko request
-      localStorage.clear(); // Local storage clear
+      await deleteAccount();
+      localStorage.clear();
       showToast('success', 'Account permanently deleted.');
-      logout(); // Logout karwa kar login page pe bhej dega
+      logout();
     } catch (error: any) {
       showToast('error', error.message || 'Could not delete account.');
       setIsDeleting(false);
@@ -76,7 +77,12 @@ export function Settings() {
                 <p className="text-sm font-medium text-text-primary">Sign Out</p>
                 <p className="text-xs text-text-muted">End your current session</p>
               </div>
-              <Button variant="ghost" icon={<LogOut className="w-4 h-4" />} onClick={logout}>
+              {/* Yahan onClick change kiya hai */}
+              <Button 
+                variant="ghost" 
+                icon={<LogOut className="w-4 h-4" />} 
+                onClick={() => setShowLogoutModal(true)}
+              >
                 Sign Out
               </Button>
             </div>
@@ -98,6 +104,42 @@ export function Settings() {
           </div>
         </Card>
       </motion.div>
+
+      {/* =========================================
+          LOGOUT CONFIRMATION MODAL
+          ========================================= */}
+      <Modal 
+        isOpen={showLogoutModal} 
+        onClose={() => setShowLogoutModal(false)} 
+        title="Sign Out"
+        size="sm"
+      >
+        <div className="space-y-4 pt-2">
+          <p className="text-sm font-semibold text-text-primary text-center">
+            Are you sure you want to sign out?
+          </p>
+          <p className="text-xs text-text-secondary text-center">
+            You will need to log in again to access your subscriptions.
+          </p>
+          <div className="flex justify-end gap-3 mt-6">
+            <Button 
+              variant="ghost" 
+              onClick={() => setShowLogoutModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="danger" 
+              onClick={() => {
+                setShowLogoutModal(false);
+                logout();
+              }}
+            >
+              Sign Out
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal isOpen={showDelete} onClose={() => setShowDelete(false)} title="Delete Account" size="sm">

@@ -1,4 +1,3 @@
-
 import { apiRequest } from './client';
 
 interface AuthResponse {
@@ -17,7 +16,8 @@ export interface AuthUser {
 }
 
 function saveAuth(response: AuthResponse): AuthUser {
-  localStorage.setItem('sub_graveyard_token', response.token);
+  // YAHAN CHANGE KIYA HAI: localStorage -> sessionStorage
+  sessionStorage.setItem('sub_graveyard_token', response.token);
 
   const user: AuthUser = {
     id: response._id,
@@ -27,7 +27,8 @@ function saveAuth(response: AuthResponse): AuthUser {
     createdAt: new Date().toISOString(),
   };
 
-  localStorage.setItem('sub_graveyard_user', JSON.stringify(user));
+  // YAHAN CHANGE KIYA HAI: localStorage -> sessionStorage
+  sessionStorage.setItem('sub_graveyard_user', JSON.stringify(user));
 
   return user;
 }
@@ -62,9 +63,11 @@ export async function signup(
 }
 
 export function logout(): void {
-  localStorage.removeItem('sub_graveyard_token');
-  localStorage.removeItem('sub_graveyard_user');
+  // YAHAN CHANGE KIYA HAI: localStorage -> sessionStorage
+  sessionStorage.removeItem('sub_graveyard_token');
+  sessionStorage.removeItem('sub_graveyard_user');
 }
+
 export async function forgotPassword(email: string) {
   return await apiRequest('/auth/forgot-password', {
     method: 'POST',
@@ -78,6 +81,7 @@ export async function resetPassword(email: string, code: string, newPassword: st
     body: JSON.stringify({ email, code, newPassword }),
   });
 }
+
 export async function deleteAccount() {
   return await apiRequest('/auth/delete-account', {
     method: 'DELETE',
