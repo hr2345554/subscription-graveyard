@@ -1,10 +1,14 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Base URL (Vercel se aayega ya local fallback)
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+// Smart logic: Agar URL ke end mein /api nahi hai, toh khud add kar dega
+const API_URL = BASE_URL.endsWith('/api') ? BASE_URL : `${BASE_URL}/api`;
 
 export const apiRequest = async <T = unknown>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> => {
-  // YAHAN CHANGE KIYA HAI: localStorage ki jagah sessionStorage
+  // localStorage ki jagah sessionStorage (Aapne sahi kiya hai security ke liye)
   const token = sessionStorage.getItem('sub_graveyard_token');
 
   const headers: HeadersInit = {
@@ -13,7 +17,10 @@ export const apiRequest = async <T = unknown>(
     ...(options.headers || {}),
   };
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
+  // Endpoint mein agar shuru mein '/' nahi hai, toh add kar dega
+  const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  const response = await fetch(`${API_URL}${formattedEndpoint}`, {
     ...options,
     headers,
   });
