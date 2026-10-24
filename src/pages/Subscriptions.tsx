@@ -25,9 +25,27 @@ import {
   getDaysUntilRenewal,
   getCategoryLabel,
 } from '../utils/calculations';
-// Skull icon yahan se hata diya gaya hai
 import { Plus, Search, Trash2, RefreshCw } from 'lucide-react';
 import { SubscriptionLogo } from '../components/ui/SubscriptionLogo';
+
+// ==========================================
+// NEW: App Suggestions & Currencies
+// ==========================================
+const popularApps = [
+  'Netflix', 'Spotify', 'YouTube Premium', 'Amazon Prime', 
+  'Disney+', 'Apple Music', 'ChatGPT Plus', 'Canva Pro', 
+  'Microsoft 365', 'Adobe Creative Cloud', 'HBO Max', 'Zee5',
+  'Figma', 'Notion', 'Github Copilot', 'Xbox Game Pass'
+];
+
+const currencies = [
+  { value: 'USD', label: 'USD ($)' },
+  { value: 'PKR', label: 'PKR (₨)' },
+  { value: 'INR', label: 'INR (₹)' },
+  { value: 'GBP', label: 'GBP (£)' },
+  { value: 'EUR', label: 'EUR (€)' }
+];
+// ==========================================
 
 const categories: { value: SubscriptionCategory; label: string }[] = [
   { value: 'streaming', label: 'Streaming' },
@@ -57,7 +75,6 @@ export function Subscriptions() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   
-  // Default filter 'active' set hai taake cancel hote hi item gayab ho jaye
   const [filterStatus, setFilterStatus] = useState('active'); 
   
   const [showAdd, setShowAdd] = useState(false);
@@ -86,7 +103,6 @@ export function Subscriptions() {
     if (filterStatus !== 'all' && sub.status !== filterStatus) {
       return false;
     }
-
     return sub.name.toLowerCase().includes(search.trim().toLowerCase());
   });
 
@@ -473,23 +489,36 @@ function AddForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <Input
-        label="Name"
-        placeholder="Netflix"
-        {...register('name')}
-        error={errors.name?.message}
-      />
+      {/* App Name with Suggestions */}
+      <div>
+        <Input
+          label="App Name"
+          placeholder="e.g. Netflix"
+          list="app-suggestions"
+          {...register('name')}
+          error={errors.name?.message}
+        />
+        <datalist id="app-suggestions">
+          {popularApps.map((app) => (
+            <option key={app} value={app} />
+          ))}
+        </datalist>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Input
           label="Price"
           type="number"
           step="0.01"
+          placeholder="0.00"
           {...register('price', { valueAsNumber: true })}
           error={errors.price?.message}
         />
-        <Input
+        
+        {/* Currency Dropdown */}
+        <Select
           label="Currency"
+          options={currencies}
           {...register('currency')}
           error={errors.currency?.message}
         />
@@ -497,7 +526,7 @@ function AddForm({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Select
-          label="Billing"
+          label="Billing Cycle"
           options={frequencies}
           {...register('billingFrequency')}
           error={errors.billingFrequency?.message}
@@ -526,7 +555,7 @@ function AddForm({
       </div>
 
       <Input
-        label="Website URL"
+        label="Website URL (Optional)"
         type="url"
         placeholder="https://..."
         {...register('websiteUrl')}
@@ -534,7 +563,8 @@ function AddForm({
       />
 
       <Textarea
-        label="Notes"
+        label="Notes (Optional)"
+        placeholder="Any additional details..."
         {...register('notes')}
         error={errors.notes?.message}
       />
@@ -548,7 +578,7 @@ function AddForm({
           type="submit"
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Adding...' : 'Add Subscription'}
+          {isSubmitting ? 'Adding...' : 'Save Subscription'}
         </Button>
       </div>
     </form>
