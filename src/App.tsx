@@ -1,4 +1,3 @@
-
 import {
   HashRouter,
   Routes,
@@ -10,12 +9,17 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Layout } from './components/layout/Layout';
 import { Login } from './pages/Login';
 import Dashboard  from './pages/Dashboard';
+
+// YAHAN CHANGE KIYA HAI: Vercel wale ko 'VercelAnalytics' naam de diya
+import { Analytics as VercelAnalytics } from '@vercel/analytics/react'; 
+
 import { Subscriptions } from './pages/Subscriptions';
 import { Graveyard } from './pages/Graveyard';
-import { Analytics } from './pages/Analytics';
+import { Analytics } from './pages/Analytics'; // Yeh aapka page hai, yeh same rahega
 import { Settings } from './pages/Settings';
 import { PageTransition } from './components/ui/Skeleton';
 import { ThemeProvider } from './contexts/ThemeContext';
+
 function LoadingScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center">
@@ -108,11 +112,14 @@ function App() {
           }}
         >
           <AppRoutes />
+          
+          {/* 👇 YAHAN ADD KIYA HAI 👇 */}
+          <VercelAnalytics />
+          
         </HashRouter>
       </AuthProvider>
     </ThemeProvider>
   );
 }
-
 
 export default App;
