@@ -11,7 +11,7 @@ import type {
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
-import { Input, Select, Textarea } from '../components/ui/FormElements';
+import { Input, Textarea } from '../components/ui/FormElements'; // Select hata diya hai kyunki ab direct HTML use ho raha hai
 import { showToast } from '../components/ui/Toast';
 import {
   subscriptionSchema,
@@ -25,11 +25,11 @@ import {
   getDaysUntilRenewal,
   getCategoryLabel,
 } from '../utils/calculations';
-import { Plus, Search, Trash2, RefreshCw } from 'lucide-react';
+import { Plus, Search, Trash2, RefreshCw, ChevronDown } from 'lucide-react';
 import { SubscriptionLogo } from '../components/ui/SubscriptionLogo';
 
 // ==========================================
-// NEW: App Suggestions & Currencies
+// App Suggestions & Currencies
 // ==========================================
 const popularApps = [
   'Netflix', 'Spotify', 'YouTube Premium', 'Amazon Prime', 
@@ -45,7 +45,6 @@ const currencies = [
   { value: 'GBP', label: 'GBP (£)' },
   { value: 'EUR', label: 'EUR (€)' }
 ];
-// ==========================================
 
 const categories: { value: SubscriptionCategory; label: string }[] = [
   { value: 'streaming', label: 'Streaming' },
@@ -467,6 +466,9 @@ export function Subscriptions() {
   );
 }
 
+// ==========================================
+// STYLISH ADD FORM (Pure HTML + Tailwind)
+// ==========================================
 function AddForm({
   onSubmit,
   onCancel,
@@ -487,89 +489,159 @@ function AddForm({
     },
   });
 
+  // Common styles taake har input premium lage
+  const inputClass = "w-full rounded-xl border border-border bg-bg-surface px-4 py-3 text-sm text-text-primary transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent-blue/40 focus:border-accent-blue/50 placeholder:text-text-muted";
+  const labelClass = "block text-sm font-semibold text-text-primary mb-1.5";
+  const errorClass = "mt-1 text-xs text-danger";
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {/* App Name with Suggestions */}
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      
+      {/* App Name with Datalist */}
       <div>
-        <Input
-          label="App Name"
-          placeholder="e.g. Netflix"
+        <label className={labelClass}>App Name</label>
+        <input
+          type="text"
+          placeholder="Search or type app name (e.g. Netflix)"
           list="app-suggestions"
           {...register('name')}
-          error={errors.name?.message}
+          className={inputClass}
         />
         <datalist id="app-suggestions">
           {popularApps.map((app) => (
             <option key={app} value={app} />
           ))}
         </datalist>
+        {errors.name && <p className={errorClass}>{errors.name.message}</p>}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Input
-          label="Price"
-          type="number"
-          step="0.01"
-          placeholder="0.00"
-          {...register('price', { valueAsNumber: true })}
-          error={errors.price?.message}
-        />
+      {/* Price & Currency */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div>
+          <label className={labelClass}>Price</label>
+          <input
+            type="number"
+            step="0.01"
+            placeholder="0.00"
+            {...register('price', { valueAsNumber: true })}
+            className={inputClass}
+          />
+          {errors.price && <p className={errorClass}>{errors.price.message}</p>}
+        </div>
         
-        {/* Currency Dropdown */}
-        <Select
-          label="Currency"
-          options={currencies}
-          {...register('currency')}
-          error={errors.currency?.message}
-        />
+        <div>
+          <label className={labelClass}>Currency</label>
+          <div className="relative">
+            <select
+              {...register('currency')}
+              className={`${inputClass} appearance-none cursor-pointer`}
+            >
+              {currencies.map((curr) => (
+                <option key={curr.value} value={curr.value}>
+                  {curr.label}
+                </option>
+              ))}
+            </select>
+            {/* Custom Dropdown Arrow */}
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-muted">
+              <ChevronDown className="h-4 w-4" />
+            </div>
+          </div>
+          {errors.currency && <p className={errorClass}>{errors.currency.message}</p>}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Select
-          label="Billing Cycle"
-          options={frequencies}
-          {...register('billingFrequency')}
-          error={errors.billingFrequency?.message}
-        />
-        <Select
-          label="Category"
-          options={categories}
-          {...register('category')}
-          error={errors.category?.message}
-        />
+      {/* Billing & Category */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div>
+          <label className={labelClass}>Billing Cycle</label>
+          <div className="relative">
+            <select
+              {...register('billingFrequency')}
+              className={`${inputClass} appearance-none cursor-pointer`}
+            >
+              {frequencies.map((freq) => (
+                <option key={freq.value} value={freq.value}>
+                  {freq.label}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-muted">
+              <ChevronDown className="h-4 w-4" />
+            </div>
+          </div>
+          {errors.billingFrequency && <p className={errorClass}>{errors.billingFrequency.message}</p>}
+        </div>
+
+        <div>
+          <label className={labelClass}>Category</label>
+          <div className="relative">
+            <select
+              {...register('category')}
+              className={`${inputClass} appearance-none cursor-pointer`}
+            >
+              {categories.map((cat) => (
+                <option key={cat.value} value={cat.value}>
+                  {cat.label}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-muted">
+              <ChevronDown className="h-4 w-4" />
+            </div>
+          </div>
+          {errors.category && <p className={errorClass}>{errors.category.message}</p>}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Input
-          label="Start Date"
-          type="date"
-          {...register('startDate')}
-          error={errors.startDate?.message}
-        />
-        <Input
-          label="Renewal Date"
-          type="date"
-          {...register('renewalDate')}
-          error={errors.renewalDate?.message}
-        />
+      {/* Dates */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div>
+          <label className={labelClass}>Start Date</label>
+          <input
+            type="date"
+            {...register('startDate')}
+            className={`${inputClass} text-text-secondary`}
+          />
+          {errors.startDate && <p className={errorClass}>{errors.startDate.message}</p>}
+        </div>
+        <div>
+          <label className={labelClass}>Renewal Date</label>
+          <input
+            type="date"
+            {...register('renewalDate')}
+            className={`${inputClass} text-text-secondary`}
+          />
+          {errors.renewalDate && <p className={errorClass}>{errors.renewalDate.message}</p>}
+        </div>
       </div>
 
-      <Input
-        label="Website URL (Optional)"
-        type="url"
-        placeholder="https://..."
-        {...register('websiteUrl')}
-        error={errors.websiteUrl?.message}
-      />
+      {/* Website URL */}
+      <div>
+        <label className={labelClass}>Website URL (Optional)</label>
+        <input
+          type="url"
+          placeholder="https://..."
+          {...register('websiteUrl')}
+          className={inputClass}
+        />
+        {errors.websiteUrl && <p className={errorClass}>{errors.websiteUrl.message}</p>}
+      </div>
 
-      <Textarea
-        label="Notes (Optional)"
-        placeholder="Any additional details..."
-        {...register('notes')}
-        error={errors.notes?.message}
-      />
+      {/* Notes */}
+      <div>
+        <label className={labelClass}>Notes (Optional)</label>
+        <textarea
+          rows={3}
+          placeholder="Any additional details..."
+          {...register('notes')}
+          className={`${inputClass} resize-none`}
+        />
+        {errors.notes && <p className={errorClass}>{errors.notes.message}</p>}
+      </div>
 
-      <div className="flex flex-wrap justify-end gap-3 border-t border-border pt-4">
+      {/* Action Buttons */}
+      <div className="flex flex-wrap justify-end gap-3 border-t border-border pt-5 mt-2">
         <Button variant="ghost" type="button" onClick={onCancel}>
           Cancel
         </Button>
@@ -577,14 +649,18 @@ function AddForm({
           variant="glow"
           type="submit"
           disabled={isSubmitting}
+          className="min-w-[140px]"
         >
-          {isSubmitting ? 'Adding...' : 'Save Subscription'}
+          {isSubmitting ? 'Saving...' : 'Save Subscription'}
         </Button>
       </div>
     </form>
   );
 }
 
+// ==========================================
+// CANCEL FORM (Untouched - Same as before)
+// ==========================================
 function CancelForm({
   sub,
   onSubmit,
