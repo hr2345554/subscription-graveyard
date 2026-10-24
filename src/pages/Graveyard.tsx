@@ -7,8 +7,8 @@ import { SubscriptionLogo } from '../components/ui/SubscriptionLogo';
 import { Modal } from '../components/ui/Modal';
 import { showToast } from '../components/ui/Toast';
 import { formatCurrency, formatDate, getCategoryLabel, toMonthlyAmount } from '../utils/calculations';
-// DollarSign yahan se hata diya gaya hai
-import { Skull, Flower2, RotateCcw, Search, Clock, MessageSquare } from 'lucide-react';
+// 🌟 Skull hata kar Flower2 add kiya
+import { Flower2, RotateCcw, Search, Clock, MessageSquare } from 'lucide-react';
 
 export function Graveyard() {
   const [subs, setSubs] = useState<Subscription[]>([]);
@@ -45,38 +45,49 @@ export function Graveyard() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header (Total Saved box yahan se remove kar diya gaya hai) */}
+    <div className="space-y-6 text-text-primary">
+      
+      {/* 🌟 PAGE HEADER (With Flower2 Icon) 🌟 */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-2"
       >
-        <div>
-          <h1 className="text-3xl font-bold text-text-primary flex items-center gap-3">
-            <Skull className="w-8 h-8 text-text-muted" /> The Graveyard
-          </h1>
-          <p className="text-text-secondary text-sm mt-1">
-            Cancelled subscriptions rest here
-          </p>
+        <div className="flex items-center gap-3">
+          {/* Standardized Rounded Icon Box */}
+          <div className="w-11 h-11 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0 border border-violet-500/20 shadow-sm">
+            <Flower2 size={22} className="text-violet-500" />
+          </div>
+          
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-text-primary mb-1">
+              Graveyard<span className="text-violet-500">.</span>
+            </h1>
+            <p className="text-sm text-text-secondary">
+              Cancelled subscriptions rest here
+            </p>
+          </div>
         </div>
       </motion.div>
 
-      {/* Search */}
+      {/* SEARCH BAR */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="relative max-w-md"
+        className="group relative max-w-md group/search"
       >
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-        <input
-          type="text"
-          placeholder="Search graveyard..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-bg-surface border border-border text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-blue/30"
-        />
+        <div className="absolute inset-0 -z-10 rounded-2xl bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 opacity-0 blur-md transition-opacity duration-500 group-focus-within/search:opacity-100" />
+        <div className="relative flex items-center overflow-hidden rounded-2xl border border-border/50 bg-bg-elevated/60 backdrop-blur-xl transition-all duration-300 focus-within:border-violet-500/50 focus-within:bg-bg-elevated">
+          <Search className="ml-4 h-5 w-5 text-text-muted transition-colors group-focus-within/search:text-violet-500" />
+          <input
+            type="text"
+            placeholder="Search graveyard..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-transparent py-4 pl-3 pr-4 text-sm font-medium text-text-primary placeholder:text-text-muted focus:outline-none"
+          />
+        </div>
       </motion.div>
 
       {/* List */}

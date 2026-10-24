@@ -6,7 +6,15 @@ import {
 } from 'react';
 import { forgotPassword, resetPassword } from '../api/auth';
 import { Modal } from '../components/ui/Modal';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { 
+  AnimatePresence, 
+  motion, 
+  useReducedMotion,
+  useMotionValue,
+  useSpring,
+  useTransform,
+  useMotionTemplate
+} from 'motion/react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -84,11 +92,88 @@ function getPasswordStrength(password: string) {
   return { score: 3, label: 'Strong', className: 'strong' };
 }
 
+// ==========================================
+// MAGNETIC BUTTON COMPONENT
+// ==========================================
+const MagneticButton = ({ children, className, ...props }: any) => {
+  const ref = useRef<HTMLButtonElement>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouse = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!ref.current) return;
+    const { clientX, clientY } = e;
+    const { height, width, left, top } = ref.current.getBoundingClientRect();
+    const middleX = clientX - (left + width / 2);
+    const middleY = clientY - (top + height / 2);
+    setPosition({ x: middleX * 0.2, y: middleY * 0.2 });
+  };
+
+  const reset = () => {
+    setPosition({ x: 0, y: 0 });
+    setIsHovered(false);
+  };
+
+  return (
+    <motion.button
+      ref={ref}
+      onMouseMove={handleMouse}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={reset}
+      animate={{ x: position.x, y: position.y, scale: isHovered ? 1.02 : 1 }}
+      transition={{ type: "spring", stiffness: 150, damping: 15, mass: 0.1 }}
+      className={className}
+      {...props}
+    >
+      {children}
+    </motion.button>
+  );
+};
+
 export function Login() {
   const navigate = useNavigate();
   const { login, signup } = useAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const reduceMotion = useReducedMotion();
+
+  // ==========================================
+  // 3D & PARALLAX LOGIC
+  // ==========================================
+  const mainRef = useRef<HTMLElement>(null);
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  const springConfig = { damping: 25, stiffness: 120, mass: 0.5 };
+  const smoothX = useSpring(mouseX, springConfig);
+  const smoothY = useSpring(mouseY, springConfig);
+
+  const bgX = useTransform(smoothX, [-1, 1], [-15, 15]);
+  const bgY = useTransform(smoothY, [-1, 1], [-15, 15]);
+
+  const rotateX = useTransform(smoothY, [-1, 1], [4, -4]);
+  const rotateY = useTransform(smoothX, [-1, 1], [-4, 4]);
+
+  const glowX = useTransform(smoothX, [-1, 1], ['0%', '100%']);
+  const glowY = useTransform(smoothY, [-1, 1], ['0%', '100%']);
+  const glowBackground = useMotionTemplate`radial-gradient(circle at ${glowX} ${glowY}, rgba(139, 92, 246, 0.15), transparent 60%)`;
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!mainRef.current || reduceMotion) return;
+    const { left, top, width, height } = mainRef.current.getBoundingClientRect();
+    mouseX.set((e.clientX - left) / width * 2 - 1);
+    mouseY.set((e.clientY - top) / height * 2 - 1);
+  };
+  // ==========================================
+
+  // Smart Real-time Greeting Logic
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 5) return 'Burning the midnight oil';
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    if (hour < 21) return 'Good evening';
+    return 'Good night';
+  };
 
   const [mode, setMode] = useState<AuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
@@ -102,11 +187,12 @@ export function Login() {
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
   
-  // Naye Loading States
+  // Loading States
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   const [submitError, setSubmitError] = useState('');
+  const [signupSuccess, setSignupSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
@@ -168,16 +254,19 @@ export function Login() {
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError('');
+    setSignupSuccess('');
     setIsLoading(true);
 
     try {
       if (mode === 'login') {
         await login(values.email, values.password);
+        finishSignIn(createUser(values.email));
       } else {
         await signup(values.email, values.password);
+        setMode('login');
+        setSignupSuccess('Account created successfully! Please log in.');
+        reset({ email: values.email, password: '' });
       }
-
-      finishSignIn(createUser(values.email));
     } catch (error) {
       const message =
         error instanceof Error
@@ -194,9 +283,10 @@ export function Login() {
   const changeMode = (nextMode: AuthMode) => {
     setMode(nextMode);
     setSubmitError('');
+    setSignupSuccess('');
     setShowPassword(false);
     clearErrors();
-    reset({ email, password: '' });
+    reset({ email: '', password: '' }); // Clear both fields on mode switch
   };
 
   const toggleTheme = () => {
@@ -205,9 +295,12 @@ export function Login() {
 
   return (
     <main
+      ref={mainRef}
+      onMouseMove={handleMouseMove}
       className={`auth-page ${
         resolvedTheme === 'light' ? 'auth-light' : 'auth-dark'
       }`}
+      style={{ perspective: 1200 }}
     >
       <section
         className={`auth-scene ${
@@ -216,7 +309,11 @@ export function Login() {
         aria-label="Subscription app animation"
       >
         <div className="auth-scene-overlay" />
-        <OrbitingSubscriptions />
+        
+        {/* Parallax wrapper for background elements */}
+        <motion.div style={{ x: bgX, y: bgY }} className="absolute inset-0 pointer-events-none z-0">
+           <OrbitingSubscriptions />
+        </motion.div>
 
         <div className="scene-copy">
           <motion.div
@@ -253,22 +350,7 @@ export function Login() {
         <div className="auth-panel-glow" />
         <div className="auth-mobile-fog" />
 
-        <button
-          className="auth-theme-toggle"
-          type="button"
-          onClick={toggleTheme}
-          aria-label={`Switch to ${
-            resolvedTheme === 'dark' ? 'light' : 'dark'
-          } mode`}
-        >
-          {resolvedTheme === 'dark' ? (
-            <Sun size={17} />
-          ) : (
-            <Moon size={17} />
-          )}
-        </button>
-
-        <div className="auth-card-wrap">
+        <div className="auth-card-wrap" style={{ perspective: 1000 }}>
           <AnimatePresence mode="wait">
             {isSuccess ? (
               <motion.div
@@ -286,7 +368,7 @@ export function Login() {
                   <Check size={28} strokeWidth={2.2} />
                 </div>
                 <span className="auth-kicker">YOU'RE ALL SET</span>
-                <h2>Welcome back.</h2>
+                <h2>{getGreeting()}.</h2>
                 <p>
                   {successUser?.name
                     ? `Good to have you here, ${successUser.name}.`
@@ -300,7 +382,12 @@ export function Login() {
             ) : (
               <motion.div
                 key="form"
-                className="auth-card"
+                className="auth-card relative"
+                style={{ 
+                  rotateX: reduceMotion ? 0 : rotateX, 
+                  rotateY: reduceMotion ? 0 : rotateY, 
+                  transformStyle: "preserve-3d" 
+                }}
                 initial={
                   reduceMotion ? false : { opacity: 0, y: 38, scale: 0.97 }
                 }
@@ -324,253 +411,250 @@ export function Login() {
                   x: { duration: 0.38 },
                 }}
               >
-                {/* =========================================
-                    CUTE DECORATIONS (STICKERS)
-                    ========================================= */}
-                <div className="auth-decorations">
-                  {/* Top Left Cute Flower */}
-                  <svg className="sticker sticker-tl" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 2C12 2 14 6 17 7C20 8 22 12 22 12C22 12 18 14 17 17C16 20 12 22 12 22C12 22 10 18 7 17C4 16 2 12 2 12C2 12 6 10 7 7C8 4 12 2 12 2Z" fill="#fbcfe8" opacity="0.8"/>
-                    <circle cx="12" cy="12" r="3" fill="#fdf2f8"/>
-                  </svg>
+                {/* SPOTLIGHT EFFECT */}
+                <motion.div
+                  className="absolute inset-0 pointer-events-none z-0 rounded-3xl"
+                  style={{ background: reduceMotion ? 'none' : glowBackground }}
+                />
 
-                  {/* Top Right Sparkle/Star */}
-                  <svg className="sticker sticker-tr" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 2L13.5 9.5L21 11L13.5 12.5L12 20L10.5 12.5L3 11L10.5 9.5L12 2Z" fill="#c4b5fd" opacity="0.9"/>
-                  </svg>
-
-                  {/* Bottom Left Small Leaf */}
-                  <svg className="sticker sticker-bl" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 22C12 22 16 18 16 12C16 6 12 2 12 2C12 2 8 6 8 12C8 18 12 22 12 22Z" fill="#e9d5ff" opacity="0.6"/>
-                  </svg>
+                {/* 3D POP-OUT CONTENT */}
+                <div style={{ transform: "translateZ(30px)" }} className="relative z-10 h-full">
                   
-                  {/* Bottom Right Cute Ghost */}
-                  <svg className="sticker sticker-br" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 2C7.58 2 4 5.58 4 10V22L7 19L10 22L12 20L14 22L17 19L20 22V10C20 5.58 16.42 2 12 2Z" fill="#f3e8ff" opacity="0.7"/>
-                    <circle cx="9" cy="10" r="1.5" fill="#a855f7"/>
-                    <circle cx="15" cy="10" r="1.5" fill="#a855f7"/>
-                  </svg>
-                </div>
-                {/* ========================================= */}
-
-                <div className="auth-card-top">
-                  {/* =========================================
-                      NETFLIX-STYLE BRAND HEADER (YAHAN CHANGE HAI)
-                      ========================================= */}
-                  <div className="auth-brand-header">
-                    <div className="auth-card-emblem" aria-hidden="true">
-                      <Skull size={32} strokeWidth={2.5} />
-                    </div>
-                    <div className="auth-brand-title">
-                      <h1>Subscription <span>Graveyard</span></h1>
-                    </div>
+                  {/* GHOST REMOVED, ONLY SPARKLE LEFT */}
+                  <div className="auth-decorations">
+                    <svg className="sticker sticker-tr" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 2L13.5 9.5L21 11L13.5 12.5L12 20L10.5 12.5L3 11L10.5 9.5L12 2Z" fill="#c4b5fd" opacity="0.9"/>
+                    </svg>
                   </div>
-                  {/* ========================================= */}
 
-                  <span className="auth-kicker">
-                    {mode === 'login'
-                      ? 'YOUR SUBSCRIPTIONS AWAIT'
-                      : 'START FRESH'}
-                  </span>
-                  <h2>
-                    {mode === 'login'
-                      ? 'Welcome back'
-                      : 'Create your account'}
-                  </h2>
-                </div>
-
-                <form onSubmit={onSubmit} noValidate className="auth-form">
-                  <motion.div
-                    className={`auth-field ${
-                      errors.email ? 'has-error' : ''
-                    } ${
-                      touchedFields.email && !errors.email && email
-                        ? 'is-valid'
-                        : ''
-                    }`}
-                    initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: reduceMotion ? 0 : 0.12 }}
-                  >
-                    <Mail className="auth-field-icon" size={17} />
-                    <input
-                      id="auth-email"
-                      type="email"
-                      autoComplete="email"
-                      placeholder=" "
-                      aria-invalid={!!errors.email}
-                      {...register('email')}
-                    />
-                    <label htmlFor="auth-email">Email address</label>
-                    {touchedFields.email && !errors.email && email && (
-                      <Check className="auth-field-check" size={16} />
-                    )}
-                  </motion.div>
-
-                  <AnimatePresence>
-                    {errors.email && (
-                      <motion.p
-                        id="email-error"
-                        className="auth-field-error"
-                        initial={{ opacity: 0, height: 0, y: -4 }}
-                        animate={{ opacity: 1, height: 'auto', y: 0 }}
-                        exit={{ opacity: 0, height: 0 }}
-                      >
-                        {errors.email.message}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-
-                  <motion.div
-                    className={`auth-field ${
-                      errors.password ? 'has-error' : ''
-                    }`}
-                    initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: reduceMotion ? 0 : 0.2 }}
-                  >
-                    <LockKeyhole className="auth-field-icon" size={17} />
-                    <input
-                      id="auth-password"
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete={
-                        mode === 'login'
-                          ? 'current-password'
-                          : 'new-password'
-                      }
-                      placeholder=" "
-                      aria-invalid={!!errors.password}
-                      {...register('password')}
-                    />
-                    <label htmlFor="auth-password">Password</label>
-                    <button
-                      className="password-visibility"
-                      type="button"
-                      onClick={() => setShowPassword((value) => !value)}
-                    >
-                      {showPassword ? (
-                        <EyeOff size={17} />
-                      ) : (
-                        <Eye size={17} />
-                      )}
-                    </button>
-                  </motion.div>
-
-                  <AnimatePresence>
-                    {errors.password && (
-                      <motion.p
-                        id="password-error"
-                        className="auth-field-error"
-                        initial={{ opacity: 0, height: 0, y: -4 }}
-                        animate={{ opacity: 1, height: 'auto', y: 0 }}
-                        exit={{ opacity: 0, height: 0 }}
-                      >
-                        {errors.password.message}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-
-                  {mode === 'signup' && password.length > 0 && (
-                    <motion.div
-                      className="password-strength"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                    >
-                      <div className="strength-track">
-                        {[1, 2, 3].map((segment) => (
-                          <span
-                            key={segment}
-                            className={
-                              segment <= strength.score
-                                ? `strength-segment active ${strength.className}`
-                                : 'strength-segment'
-                            }
-                          />
-                        ))}
+                  <div className="auth-card-top">
+                    <div className="auth-brand-header">
+                      <div className="auth-card-emblem" aria-hidden="true">
+                        <Skull size={32} strokeWidth={2.5} />
                       </div>
-                      <span className={`strength-label ${strength.className}`}>
-                        {strength.label}
-                      </span>
-                    </motion.div>
-                  )}
-
-                  {mode === 'login' && (
-                    <div className="auth-forgot-row">
-                      <span>Forgot your password?</span>
-                      <button
-                        type="button"
-                        className="auth-reset-btn"
-                        onClick={() => {
-                          const currentEmail = watch('email');
-                          setResetEmail(currentEmail || '');
-                          setShowReset(true);
-                          setResetStep(1);
-                          setResetError('');
-                          setResetSuccess('');
-                        }}
-                      >
-                        Reset it
-                      </button>
+                      <div className="auth-brand-title">
+                        <h1>Subscription <span>Graveyard</span></h1>
+                      </div>
                     </div>
-                  )}
 
-                  <AnimatePresence>
-                    {submitError && (
-                      <motion.div
-                        className="auth-error-banner"
-                        role="alert"
-                        initial={{ opacity: 0, y: -6, height: 0 }}
-                        animate={{ opacity: 1, y: 0, height: 'auto' }}
-                        exit={{ opacity: 0, y: -6, height: 0 }}
+                    <span className="auth-kicker">
+                      {mode === 'login'
+                        ? 'YOUR SUBSCRIPTIONS AWAIT'
+                        : 'START FRESH'}
+                    </span>
+                    
+                    <h2>
+                      {mode === 'login'
+                        ? `${getGreeting()}.`
+                        : 'Create your account'}
+                    </h2>
+                  </div>
+
+                  {/* FORM AUTOCOMPLETE OFF */}
+                  <form onSubmit={onSubmit} noValidate autoComplete="off" className="auth-form flex flex-col gap-4">
+                    <motion.div
+                      className={`auth-field ${
+                        errors.email ? 'has-error' : ''
+                      } ${
+                        touchedFields.email && !errors.email && email
+                          ? 'is-valid'
+                          : ''
+                      }`}
+                      initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: reduceMotion ? 0 : 0.12 }}
+                    >
+                      <Mail className="auth-field-icon" size={17} />
+                      <input
+                        id="auth-email"
+                        type="email"
+                        autoComplete="off" 
+                        placeholder=" "
+                        aria-invalid={!!errors.email}
+                        {...register('email')}
+                      />
+                      <label htmlFor="auth-email">Email address</label>
+                      {touchedFields.email && !errors.email && email && (
+                        <Check className="auth-field-check" size={16} />
+                      )}
+                    </motion.div>
+
+                    <AnimatePresence>
+                      {errors.email && (
+                        <motion.p
+                          id="email-error"
+                          className="auth-field-error"
+                          initial={{ opacity: 0, height: 0, y: -4 }}
+                          animate={{ opacity: 1, height: 'auto', y: 0 }}
+                          exit={{ opacity: 0, height: 0 }}
+                        >
+                          {errors.email.message}
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
+
+                    <motion.div
+                      className={`auth-field ${
+                        errors.password ? 'has-error' : ''
+                      }`}
+                      initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: reduceMotion ? 0 : 0.2 }}
+                    >
+                      <LockKeyhole className="auth-field-icon" size={17} />
+                      <input
+                        id="auth-password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password" 
+                        placeholder=" "
+                        aria-invalid={!!errors.password}
+                        {...register('password')}
+                      />
+                      <label htmlFor="auth-password">Password</label>
+                      <button
+                        className="password-visibility"
+                        type="button"
+                        onClick={() => setShowPassword((value) => !value)}
                       >
-                        <span className="error-dot" />
-                        {submitError}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                        {showPassword ? (
+                          <EyeOff size={17} />
+                        ) : (
+                          <Eye size={17} />
+                        )}
+                      </button>
+                    </motion.div>
 
-                  <motion.button
-                    className="auth-submit"
-                    type="submit"
-                    disabled={isLoading}
-                    whileHover={reduceMotion ? undefined : { y: -2 }}
-                    whileTap={reduceMotion ? undefined : { scale: 0.985 }}
-                  >
-                    <span className="submit-shimmer" />
-                    {isLoading ? (
-                      <>
-                        <span className="auth-spinner" />
-                        {mode === 'login' ? 'Signing in…' : 'Creating account…'}
-                      </>
-                    ) : (
-                      <>
-                        {mode === 'login' ? 'Log in' : 'Create account'}
-                        <ArrowRight size={17} />
-                      </>
-                    )}
-                  </motion.button>
-                </form>
+                    <AnimatePresence>
+                      {errors.password && (
+                        <motion.p
+                          id="password-error"
+                          className="auth-field-error"
+                          initial={{ opacity: 0, height: 0, y: -4 }}
+                          animate={{ opacity: 1, height: 'auto', y: 0 }}
+                          exit={{ opacity: 0, height: 0 }}
+                        >
+                          {errors.password.message}
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
 
-                <div className="auth-mode-switch">
-                  <span>
-                    {mode === 'login'
-                      ? 'New around here?'
-                      : 'Already have an account?'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      changeMode(mode === 'login' ? 'signup' : 'login')
-                    }
-                  >
-                    {mode === 'login' ? 'Sign up' : 'Log in'}
-                  </button>
-                </div>
+                    <div className="min-h-[24px]">
+                      {mode === 'signup' && password.length > 0 && (
+                        <motion.div
+                          className="password-strength"
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                        >
+                          <div className="strength-track">
+                            {[1, 2, 3].map((segment) => (
+                              <span
+                                key={segment}
+                                className={
+                                  segment <= strength.score
+                                    ? `strength-segment active ${strength.className}`
+                                    : 'strength-segment'
+                                }
+                              />
+                            ))}
+                          </div>
+                          <span className={`strength-label ${strength.className}`}>
+                            {strength.label}
+                          </span>
+                        </motion.div>
+                      )}
 
-                <div className="auth-trust-note">
-                  <ShieldCheck size={14} />
-                  <span>Your money. Your choices. Your peace of mind.</span>
+                      {mode === 'login' && (
+                        <div className="auth-forgot-row">
+                          <span>Forgot your password?</span>
+                          <button
+                            type="button"
+                            className="auth-reset-btn"
+                            onClick={() => {
+                              const currentEmail = watch('email');
+                              setResetEmail(currentEmail || '');
+                              setShowReset(true);
+                              setResetStep(1);
+                              setResetError('');
+                              setResetSuccess('');
+                            }}
+                          >
+                            Reset it
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <AnimatePresence>
+                      {signupSuccess && (
+                        <motion.div
+                          className="flex items-center gap-2 rounded-xl bg-green-500/10 border border-green-500/20 p-3 text-sm font-medium text-green-500"
+                          role="status"
+                          initial={{ opacity: 0, y: -6, height: 0 }}
+                          animate={{ opacity: 1, y: 0, height: 'auto' }}
+                          exit={{ opacity: 0, y: -6, height: 0 }}
+                        >
+                          <Check size={16} /> 
+                          {signupSuccess}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <AnimatePresence>
+                      {submitError && (
+                        <motion.div
+                          className="auth-error-banner"
+                          role="alert"
+                          initial={{ opacity: 0, y: -6, height: 0 }}
+                          animate={{ opacity: 1, y: 0, height: 'auto' }}
+                          exit={{ opacity: 0, y: -6, height: 0 }}
+                        >
+                          <span className="error-dot" />
+                          {submitError}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <MagneticButton
+                      className="auth-submit w-full h-[56px] rounded-2xl mt-1"
+                      type="submit"
+                      disabled={isLoading}
+                    >
+                      <span className="submit-shimmer" />
+                      {isLoading ? (
+                        <>
+                          <span className="auth-spinner" />
+                          {mode === 'login' ? 'Signing in…' : 'Creating account…'}
+                        </>
+                      ) : (
+                        <>
+                          {mode === 'login' ? 'Log in' : 'Create account'}
+                          <ArrowRight size={17} />
+                        </>
+                      )}
+                    </MagneticButton>
+                  </form>
+
+                  <div className="auth-mode-switch">
+                    <span>
+                      {mode === 'login'
+                        ? 'New around here?'
+                        : 'Already have an account?'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        changeMode(mode === 'login' ? 'signup' : 'login')
+                      }
+                    >
+                      {mode === 'login' ? 'Sign up' : 'Log in'}
+                    </button>
+                  </div>
+
+                  <div className="auth-trust-note">
+                    <ShieldCheck size={14} />
+                    <span>Your money. Your choices. Your peace of mind.</span>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -584,9 +668,7 @@ export function Login() {
         </div>
       </section>
 
-      {/* =========================================
-          PREMIUM PASSWORD RESET MODAL (With Animations)
-          ========================================= */}
+      {/* PASSWORD RESET MODAL */}
       <Modal 
         isOpen={showReset} 
         onClose={() => {
@@ -630,7 +712,7 @@ export function Login() {
                   />
                 </div>
 
-                <button
+                <MagneticButton
                   type="button"
                   disabled={isSendingCode || !resetEmail}
                   onClick={async () => {
@@ -656,7 +738,7 @@ export function Login() {
                   ) : (
                     'Send Reset Code'
                   )}
-                </button>
+                </MagneticButton>
               </motion.div>
             ) : (
               <motion.div
@@ -727,7 +809,7 @@ export function Login() {
                   />
                 </div>
 
-                <button
+                <MagneticButton
                   type="button"
                   disabled={isUpdatingPassword || !resetCode || !newPassword}
                   onClick={async () => {
@@ -756,7 +838,7 @@ export function Login() {
                   ) : (
                     'Update Password'
                   )}
-                </button>
+                </MagneticButton>
 
                 <div className="text-center mt-2">
                   <button

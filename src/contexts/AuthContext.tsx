@@ -24,7 +24,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 function loadStoredUser(): User | null {
   try {
-    // YAHAN CHANGE KIYA HAI: localStorage -> sessionStorage
+    // sessionStorage use ho raha hai
     const token = sessionStorage.getItem('sub_graveyard_token');
     const stored = sessionStorage.getItem('sub_graveyard_user');
 
@@ -49,12 +49,22 @@ export function AuthProvider({
   }, []);
 
   const signup = useCallback(async (email: string, password: string) => {
-    const authenticatedUser = await apiSignup(email, password);
-    setUser(authenticatedUser as User);
+    // 1. Backend par account create karo
+    await apiSignup(email, password);
+    
+    // 🚨 FIX: setUser(authenticatedUser) ko hata diya hai taake auto-login na ho.
+    
+    // 2. Agar API internally sessionStorage mein token save kar rahi hai, 
+    // toh usko clear kar do taake user signup ke baad automatically login na ho.
+    sessionStorage.removeItem('sub_graveyard_token');
+    sessionStorage.removeItem('sub_graveyard_user');
   }, []);
 
   const logout = useCallback(() => {
     apiLogout();
+    // Session clear karo
+    sessionStorage.removeItem('sub_graveyard_token');
+    sessionStorage.removeItem('sub_graveyard_user');
     setUser(null);
   }, []);
 

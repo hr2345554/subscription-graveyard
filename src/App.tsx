@@ -10,12 +10,15 @@ import { Layout } from './components/layout/Layout';
 import { Login } from './pages/Login';
 import Dashboard  from './pages/Dashboard';
 
-// YAHAN CHANGE KIYA HAI: Vercel wale ko 'VercelAnalytics' naam de diya
+// Vercel Analytics import
 import { Analytics as VercelAnalytics } from '@vercel/analytics/react'; 
 
 import { Subscriptions } from './pages/Subscriptions';
 import { Graveyard } from './pages/Graveyard';
-import { Analytics } from './pages/Analytics'; // Yeh aapka page hai, yeh same rahega
+
+// 👇 YAHAN FIX KIYA HAI: Curly braces { } hata diye hain 👇
+import Analytics from './pages/Analytics'; 
+
 import { Settings } from './pages/Settings';
 import { PageTransition } from './components/ui/Skeleton';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -113,7 +116,7 @@ function App() {
         >
           <AppRoutes />
           
-          {/* 👇 YAHAN ADD KIYA HAI 👇 */}
+          {/* Vercel Analytics Component */}
           <VercelAnalytics />
           
         </HashRouter>
