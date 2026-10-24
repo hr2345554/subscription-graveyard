@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { api } from '../api/service';
 import type { Subscription as AppSubscription } from '../types';
+// 👇 1. YEH IMPORT ADD KIYA HAI 👇
+import { getRealWorldComparison } from '../utils/funTranslations';
 
 interface DashboardSubscription extends AppSubscription {
   billingCycle?: string;
@@ -159,8 +161,6 @@ export default function Dashboard() {
     };
 
     void loadSubscriptionsData();
-
-    // ⚠️ YAHAN SE setInterval HATA DIYA HAI TAAKE 429 ERROR NA AAYE
 
     window.addEventListener('storage', loadSubscriptionsData);
 
@@ -516,6 +516,17 @@ export default function Dashboard() {
                     {view === 'Annual' ? '/ year' : '/ month'}
                   </span>
                 </div>
+
+                {/* 👇 2. YEH NAYA FEATURE ADD KIYA HAI 👇 */}
+                {!loading && totalSpend > 0 && (
+                  <div className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm text-white/90 backdrop-blur-sm border border-white/10 w-fit">
+                    <span>💡</span>
+                    <span>
+                      That's like buying <strong className="text-white">{getRealWorldComparison(totalSpend)}</strong>!
+                    </span>
+                  </div>
+                )}
+                {/* 👆 NAYA FEATURE KHATAM 👆 */}
 
                 <div className="mt-7 flex flex-wrap gap-3">
                   <div className="min-w-[125px] rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-3 backdrop-blur-sm">
