@@ -23,7 +23,7 @@ import {
   getDaysUntilRenewal,
   getCategoryLabel,
 } from '../utils/calculations';
-import { Plus, Search, RefreshCw, ChevronDown, X, Trash2, Ban, Users, Pencil, CheckCircle2, ArrowRight, Check } from 'lucide-react';
+import { Plus, Search, RefreshCw, ChevronDown, X, Trash2, Ban, Users, Pencil, CheckCircle2, ArrowRight, Check, CreditCard } from 'lucide-react';
 import { SubscriptionLogo } from '../components/ui/SubscriptionLogo';
 import { SplitModal } from '../components/SplitModal'; 
 
@@ -73,12 +73,23 @@ const TiltCard = ({ children, onClick, isSelectable }: { children: ReactNode, on
   );
 };
 
-// App Suggestions & Currencies
 const popularApps = [
-  'Netflix', 'Spotify', 'YouTube Premium', 'Amazon Prime', 
-  'Disney+', 'Apple Music', 'ChatGPT Plus', 'Canva Pro', 
-  'Microsoft 365', 'Adobe Creative Cloud', 'HBO Max', 'Zee5',
-  'Figma', 'Notion', 'Github Copilot', 'Xbox Game Pass'
+  { name: 'Netflix', url: 'https://netflix.com' },
+  { name: 'Spotify', url: 'https://spotify.com' },
+  { name: 'YouTube Premium', url: 'https://youtube.com/premium' },
+  { name: 'Amazon Prime', url: 'https://amazon.com/prime' },
+  { name: 'Disney+', url: 'https://disneyplus.com' },
+  { name: 'Apple Music', url: 'https://music.apple.com' },
+  { name: 'ChatGPT Plus', url: 'https://chat.openai.com' },
+  { name: 'Canva Pro', url: 'https://canva.com' },
+  { name: 'Microsoft 365', url: 'https://microsoft365.com' },
+  { name: 'Adobe Creative Cloud', url: 'https://adobe.com/creativecloud' },
+  { name: 'HBO Max', url: 'https://max.com' },
+  { name: 'Zee5', url: 'https://zee5.com' },
+  { name: 'Figma', url: 'https://figma.com' },
+  { name: 'Notion', url: 'https://notion.so' },
+  { name: 'Github Copilot', url: 'https://github.com/features/copilot' },
+  { name: 'Xbox Game Pass', url: 'https://xbox.com/game-pass' },
 ];
 
 const currencies = [
@@ -112,23 +123,14 @@ const frequencies: { value: BillingFrequency; label: string }[] = [
 ];
 
 export function Subscriptions() {
-  // Tab State
-  const [activeTab, setActiveTab] = useState<'my-subs' | 'shared'>(
-    (localStorage.getItem('subs_tab') as 'my-subs' | 'shared') || 'my-subs'
-  );
-
-  const handleTabChange = (tab: 'my-subs' | 'shared') => {
-    setActiveTab(tab);
-    localStorage.setItem('subs_tab', tab);
-  };
+  // 🌟 FIX 1: State reset to 'my-subs' always, removed localStorage
+  const [activeTab, setActiveTab] = useState<'my-subs' | 'shared'>('my-subs');
 
   const [subs, setSubs] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  
   const [filterStatus, setFilterStatus] = useState('active'); 
-  
   const [sharedSubs, setSharedSubs] = useState<any[]>([]);
   const [loadingShared, setLoadingShared] = useState(false);
 
@@ -143,7 +145,6 @@ export function Subscriptions() {
   const loadSubscriptions = useCallback(async () => {
     setLoading(true);
     setError('');
-
     try {
       const data = await api.getSubscriptions();
       setSubs(data);
@@ -181,9 +182,7 @@ export function Subscriptions() {
   }, [search, filterStatus, activeTab]);
 
   const filtered = subs.filter((sub) => {
-    if (filterStatus !== 'all' && sub.status !== filterStatus) {
-      return false;
-    }
+    if (filterStatus !== 'all' && sub.status !== filterStatus) return false;
     return sub.name.toLowerCase().includes(search.trim().toLowerCase());
   });
 
@@ -212,14 +211,8 @@ export function Subscriptions() {
 
   const handleCancel = async (data: CancelFormData) => {
     if (!showCancel) return;
-
     try {
-      await api.cancelSubscription(
-        showCancel.id,
-        data.cancellationDate,
-        data.cancellationReason || '',
-      );
-
+      await api.cancelSubscription(showCancel.id, data.cancellationDate, data.cancellationReason || '');
       await loadSubscriptions();
       showToast('success', `${showCancel.name} moved to Graveyard`);
       setShowCancel(null);
@@ -296,11 +289,7 @@ export function Subscriptions() {
     <div className="min-w-0 space-y-6 text-text-primary transition-colors duration-300">
       
       {/* PAGE HEADER */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col gap-6"
-      >
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-6">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-3.5">
             <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl">
@@ -317,7 +306,6 @@ export function Subscriptions() {
             </div>
           </div>
 
-          {/* Add Button */}
           {activeTab === 'my-subs' && (
             <Button
               variant="glow"
@@ -331,28 +319,28 @@ export function Subscriptions() {
           )}
         </div>
 
-        {/* 🌟 SLEEK SEGMENTED CONTROL TABS (BOTH GREEN) 🌟 */}
-        <div className="inline-flex p-1.5 bg-bg-surface/50 backdrop-blur-md border border-border/40 rounded-full shadow-sm">
+        {/* 🌟 FIX 2: ALAG-ALAG RECTANGULAR TOGGLES 🌟 */}
+        <div className="flex flex-wrap items-center gap-4">
           <button
-            onClick={() => handleTabChange('my-subs')}
-            className={`px-6 py-2.5 text-sm font-bold rounded-full transition-all duration-300 flex items-center gap-2 ${
-              activeTab === 'my-subs' 
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' 
-                : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover/50'
+            onClick={() => setActiveTab('my-subs')}
+            className={`px-6 py-3 text-sm font-bold rounded-lg border-2 transition-all duration-300 flex items-center gap-2 ${
+              activeTab === 'my-subs'
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-500/30'
+                : 'bg-bg-surface text-text-secondary border-border/50 hover:bg-bg-hover hover:text-text-primary hover:border-border'
             }`}
           >
-            My Subscriptions
+            <CreditCard size={18} /> My Subscriptions
           </button>
           
           <button
-            onClick={() => handleTabChange('shared')}
-            className={`px-6 py-2.5 text-sm font-bold rounded-full transition-all duration-300 flex items-center gap-2 ${
-              activeTab === 'shared' 
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' 
-                : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover/50'
+            onClick={() => setActiveTab('shared')}
+            className={`px-6 py-3 text-sm font-bold rounded-lg border-2 transition-all duration-300 flex items-center gap-2 ${
+              activeTab === 'shared'
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-500/30'
+                : 'bg-bg-surface text-text-secondary border-border/50 hover:bg-bg-hover hover:text-text-primary hover:border-border'
             }`}
           >
-            <Users size={16} /> Shared with Me
+            <Users size={18} /> Shared with Me
           </button>
         </div>
       </motion.div>
@@ -646,7 +634,7 @@ export function Subscriptions() {
 }
 
 // ==========================================
-// STYLISH ADD/EDIT FORM
+// STYLISH ADD/EDIT FORM (WITH AUTO-FILL & ROBUST DATE LOGIC)
 // ==========================================
 function AddForm({
   onSubmit,
@@ -660,6 +648,8 @@ function AddForm({
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<SubscriptionFormData>({
     resolver: zodResolver(subscriptionSchema),
@@ -680,6 +670,58 @@ function AddForm({
     },
   });
 
+  const watchedName = watch('name');
+  const watchedStartDate = watch('startDate');
+  const watchedCycle = watch('billingFrequency');
+
+  // Auto-fill URL
+  useEffect(() => {
+    if (watchedName) {
+      const selectedApp = popularApps.find(
+        (app) => app.name.toLowerCase() === watchedName.toLowerCase()
+      );
+      if (selectedApp) {
+        setValue('websiteUrl', selectedApp.url);
+      }
+    }
+  }, [watchedName, setValue]);
+
+  // 🌟 FIX 3: ROBUST DATE CALCULATION LOGIC (No more shifting/overflow issues) 🌟
+  useEffect(() => {
+    if (watchedStartDate && watchedCycle) {
+      // Force local timezone parsing to avoid UTC shifts
+      const [year, month, day] = watchedStartDate.split('-').map(Number);
+      if (!year || !month || !day) return;
+
+      const start = new Date(year, month - 1, day);
+      if (isNaN(start.getTime())) return;
+
+      let newDate = new Date(start);
+
+      if (watchedCycle === 'weekly') {
+        newDate.setDate(newDate.getDate() + 7);
+      } else if (watchedCycle === 'monthly') {
+        newDate.setMonth(newDate.getMonth() + 1);
+      } else if (watchedCycle === 'quarterly') {
+        newDate.setMonth(newDate.getMonth() + 3);
+      } else if (watchedCycle === 'yearly') {
+        newDate.setFullYear(newDate.getFullYear() + 1);
+      }
+
+      // Handle overflow: Jan 31 + 1 month should be Feb 28/29, NOT March 3
+      if (newDate.getDate() !== day && watchedCycle !== 'weekly') {
+        newDate.setDate(0); // Set to last day of previous month
+      }
+
+      // Format back to YYYY-MM-DD safely
+      const y = newDate.getFullYear();
+      const m = String(newDate.getMonth() + 1).padStart(2, '0');
+      const d = String(newDate.getDate()).padStart(2, '0');
+      
+      setValue('renewalDate', `${y}-${m}-${d}`);
+    }
+  }, [watchedStartDate, watchedCycle, setValue]);
+
   const inputClass = "w-full rounded-xl border border-border bg-bg-surface px-4 py-3 text-sm text-text-primary transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent-blue/40 focus:border-accent-blue/50 placeholder:text-text-muted";
   const labelClass = "block text-sm font-semibold text-text-primary mb-1.5";
   const errorClass = "mt-1 text-xs text-danger";
@@ -689,7 +731,7 @@ function AddForm({
       <div>
         <label className={labelClass}>App Name</label>
         <input type="text" placeholder="Search or type app name (e.g. Netflix)" list="app-suggestions" {...register('name')} className={inputClass} />
-        <datalist id="app-suggestions">{popularApps.map((app) => (<option key={app} value={app} />))}</datalist>
+        <datalist id="app-suggestions">{popularApps.map((app) => (<option key={app.name} value={app.name} />))}</datalist>
         {errors.name && <p className={errorClass}>{errors.name.message}</p>}
       </div>
 
@@ -741,21 +783,21 @@ function AddForm({
           {errors.startDate && <p className={errorClass}>{errors.startDate.message}</p>}
         </div>
         <div>
-          <label className={labelClass}>Renewal Date</label>
-          <input type="date" {...register('renewalDate')} className={`${inputClass} text-text-secondary`} />
+          <label className={labelClass}>Renewal Date (Auto-Calculated)</label>
+          <input type="date" {...register('renewalDate')} className={`${inputClass} bg-emerald-500/5 border-emerald-500/30 text-text-secondary`} />
           {errors.renewalDate && <p className={errorClass}>{errors.renewalDate.message}</p>}
         </div>
       </div>
 
       <div>
         <label className={labelClass}>Website URL (Optional)</label>
-        <input type="url" placeholder="https://..." {...register('websiteUrl')} className={inputClass} />
+        <input type="url" placeholder="https://..." {...register('websiteUrl')} className={`${inputClass} bg-emerald-500/5 border-emerald-500/30`} />
         {errors.websiteUrl && <p className={errorClass}>{errors.websiteUrl.message}</p>}
       </div>
 
       <div className="flex flex-wrap justify-end gap-3 border-t border-border pt-5 mt-2">
         <Button variant="ghost" type="button" onClick={onCancel}>Cancel</Button>
-        <Button variant="glow" type="submit" disabled={isSubmitting} className="min-w-[140px]">
+        <Button variant="glow" type="submit" disabled={isSubmitting} className="min-w-[140px] bg-emerald-600 hover:bg-emerald-500 text-white">
           {isSubmitting ? 'Saving...' : 'Save Subscription'}
         </Button>
       </div>

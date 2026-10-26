@@ -265,8 +265,7 @@ export default function Dashboard() {
   const handleCancelFlow = () => navigate('/subscriptions');
 
   return (
-    // 🔥 Spacing Fix: Reduced top padding (pt-2) so it doesn't look awkwardly empty
-    <main className="min-h-screen bg-transparent px-4 pt-2 pb-8 text-text-primary ...">
+    <main className="min-h-screen bg-transparent px-4 pt-2 pb-8 text-text-primary sm:px-6 sm:pt-4 lg:px-8 lg:pt-6 transition-colors duration-300">
       <div className="mx-auto w-full max-w-[1600px] space-y-7">
         
         {/* 🌟 COMPACT & BALANCED HEADER 🌟 */}
@@ -329,7 +328,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        <section className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+        <section className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12">
           {/* MAIN CARD */}
           <article className="relative isolate min-h-[310px] overflow-hidden rounded-[28px] bg-gradient-to-br from-[#17132f] via-[#282052] to-[#45258c] p-6 text-white shadow-xl shadow-violet-950/10 sm:p-8 lg:col-span-7 lg:p-10">
             <div className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full border border-white/10" />
@@ -435,7 +434,7 @@ export default function Dashboard() {
                   initial={{ opacity: 0, height: 0, scale: 0.95 }}
                   animate={{ opacity: 1, height: 'auto', scale: 1 }}
                   exit={{ opacity: 0, height: 0, scale: 0.95 }}
-                  className="mb-6 overflow-hidden"
+                  className="mb-6 overflow-hidden shrink-0"
                 >
                   <div className="relative rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/5 to-fuchsia-500/5 p-4 shadow-sm dark:from-violet-500/10 dark:to-fuchsia-500/10">
                     <button onClick={handleCancelFlow} className="absolute top-3 right-3 text-text-muted hover:text-text-primary">
@@ -473,7 +472,8 @@ export default function Dashboard() {
               )}
             </AnimatePresence>
 
-            <div className="flex-1 flex flex-col justify-center space-y-6">
+            {/* 🌟 SCROLLABLE AREA FOR CATEGORIES 🌟 */}
+            <div className="flex-1 flex flex-col justify-start space-y-6 max-h-[350px] overflow-y-auto pr-2 pb-1">
               {categoriesData.map(([category, amount], index) => {
                 const numericAmount = Number(amount) || 0;
                 const percentOfTotal = numericAmount > 0 ? (numericAmount / totalCategorySpend) * 100 : 0;
@@ -681,6 +681,7 @@ export default function Dashboard() {
                         <div className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ease-out ${isUrgent ? 'bg-gradient-to-r from-rose-600 to-rose-400' : isSoon ? 'bg-gradient-to-r from-amber-500 to-orange-400' : 'bg-gradient-to-r from-emerald-500 to-teal-400'}`} style={{ width: `${progressPercent}%` }}>
                           <div className="absolute inset-0 bg-white/20 h-[1px] rounded-t-full" />
                         </div>
+                        {/* 🌟 TYPO FIXED HERE: progressPercent 🌟 */}
                         <div className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-[1.5px] border-white shadow-md transition-all duration-1000 ease-out z-10 ${isUrgent ? 'bg-rose-500 shadow-[0_0_8px_rgba(225,29,72,0.6)]' : isSoon ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'}`} style={{ left: `calc(${progressPercent}% - 6px)` }} />
                       </div>
                     </div>
