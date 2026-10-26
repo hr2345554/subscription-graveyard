@@ -585,11 +585,15 @@ export function Login() {
                       )}
 
                       {mode === 'login' && (
-                        <div className="auth-forgot-row">
-                          <span>Forgot your password?</span>
+                        <div className="flex w-full items-center justify-center gap-2 mt-1 select-none">
+                          {/* 🌟 YAHAN FONT-SEMIBOLD AUR TEXT-SECONDARY ADD KIYA HAI 🌟 */}
+                          <span className="text-xs font-semibold text-text-secondary">
+                            Forgot password?
+                          </span>
+                          
+                          {/* 🌟 CHOTA AUR FIXED HEIGHT TOGGLE BUTTON 🌟 */}
                           <button
                             type="button"
-                            className="auth-reset-btn"
                             onClick={() => {
                               const currentEmail = watch('email');
                               setResetEmail(currentEmail || '');
@@ -598,6 +602,7 @@ export function Login() {
                               setResetError('');
                               setResetSuccess('');
                             }}
+                            className="h-5 px-2 flex items-center justify-center rounded-full text-[10px] font-bold leading-none text-violet-600 bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 active:scale-95 dark:text-violet-300 dark:bg-violet-900/30 dark:border-violet-700/50 dark:hover:bg-violet-800/40 transition-all"
                           >
                             Reset it
                           </button>

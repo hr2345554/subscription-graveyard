@@ -239,7 +239,6 @@ export function Subscriptions() {
     }
   };
 
-  // 🌟 Accept Invite
   const handleAccept = async (splitId: string) => {
     try {
       await api.acceptSplit(splitId);
@@ -250,7 +249,6 @@ export function Subscriptions() {
     }
   };
 
-  // 🌟 Remove / Leave Invite
   const handleRemoveSplit = async (splitId: string) => {
     if (!window.confirm('Are you sure you want to remove this shared subscription?')) return;
     try {
@@ -311,7 +309,7 @@ export function Subscriptions() {
             </div>
             <div className="flex flex-col justify-center">
               <h1 className="text-2xl font-black tracking-tight text-text-primary sm:text-3xl leading-tight">
-                Subscriptions<span className="text-violet-500">.</span>
+                Subscriptions<span className="text-emerald-500">.</span>
               </h1>
               <p className="mt-1 text-xs sm:text-sm leading-tight text-text-secondary font-medium">
                 Manage your digital ecosystem in one place
@@ -325,7 +323,7 @@ export function Subscriptions() {
               variant="glow"
               icon={<Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />}
               onClick={() => setShowAdd(true)}
-              className="group relative overflow-hidden rounded-xl px-5 py-2.5 h-11 text-sm font-bold shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 transition-all duration-300"
+              className="group relative overflow-hidden rounded-xl px-5 py-2.5 h-11 text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all duration-300"
             >
               <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-[shimmer_1.5s_infinite]" />
               Add Subscription
@@ -333,24 +331,25 @@ export function Subscriptions() {
           )}
         </div>
 
-        {/* TABS */}
-        <div className="flex p-1 space-x-1 bg-bg-surface/50 border border-border/60 rounded-xl w-fit">
+        {/* 🌟 SLEEK SEGMENTED CONTROL TABS (BOTH GREEN) 🌟 */}
+        <div className="inline-flex p-1.5 bg-bg-surface/50 backdrop-blur-md border border-border/40 rounded-full shadow-sm">
           <button
             onClick={() => handleTabChange('my-subs')}
-            className={`px-5 py-2 text-sm font-bold rounded-lg transition-all duration-300 ${
+            className={`px-6 py-2.5 text-sm font-bold rounded-full transition-all duration-300 flex items-center gap-2 ${
               activeTab === 'my-subs' 
-                ? 'bg-violet-500 text-white shadow-md shadow-violet-500/20' 
-                : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' 
+                : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover/50'
             }`}
           >
             My Subscriptions
           </button>
+          
           <button
             onClick={() => handleTabChange('shared')}
-            className={`px-5 py-2 text-sm font-bold rounded-lg transition-all duration-300 flex items-center gap-2 ${
+            className={`px-6 py-2.5 text-sm font-bold rounded-full transition-all duration-300 flex items-center gap-2 ${
               activeTab === 'shared' 
-                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' 
-                : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' 
+                : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover/50'
             }`}
           >
             <Users size={16} /> Shared with Me
@@ -364,9 +363,9 @@ export function Subscriptions() {
           
           <div className="group relative flex flex-col gap-3 sm:flex-row">
             <div className="relative flex-1 group/search">
-              <div className="absolute inset-0 -z-10 rounded-2xl bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 opacity-0 blur-md transition-opacity duration-500 group-focus-within/search:opacity-100" />
-              <div className="relative flex items-center overflow-hidden rounded-2xl border border-border/50 bg-bg-elevated/60 backdrop-blur-xl transition-all duration-300 focus-within:border-violet-500/50 focus-within:bg-bg-elevated">
-                <Search className="ml-4 h-5 w-5 text-text-muted transition-colors group-focus-within/search:text-violet-500" />
+              <div className="absolute inset-0 -z-10 rounded-2xl bg-gradient-to-r from-emerald-500/20 to-teal-500/20 opacity-0 blur-md transition-opacity duration-500 group-focus-within/search:opacity-100" />
+              <div className="relative flex items-center overflow-hidden rounded-2xl border border-border/50 bg-bg-elevated/60 backdrop-blur-xl transition-all duration-300 focus-within:border-emerald-500/50 focus-within:bg-bg-elevated">
+                <Search className="ml-4 h-5 w-5 text-text-muted transition-colors group-focus-within/search:text-emerald-500" />
                 <input
                   type="search"
                   placeholder="Search your subscriptions..."
@@ -381,13 +380,13 @@ export function Subscriptions() {
               <select
                 value={filterStatus}
                 onChange={(event) => setFilterStatus(event.target.value)}
-                className="h-full w-full appearance-none rounded-2xl border border-border/50 bg-bg-elevated/60 backdrop-blur-xl py-4 pl-11 pr-10 text-sm font-bold text-text-primary transition-all duration-300 hover:bg-bg-elevated focus:outline-none focus:ring-2 focus:ring-violet-500/50 cursor-pointer sm:w-[180px]"
+                className="h-full w-full appearance-none rounded-2xl border border-border/50 bg-bg-elevated/60 backdrop-blur-xl py-4 pl-11 pr-10 text-sm font-bold text-text-primary transition-all duration-300 hover:bg-bg-elevated focus:outline-none focus:ring-2 focus:ring-emerald-500/50 cursor-pointer sm:w-[180px]"
               >
                 <option value="active">Active</option>
                 <option value="cancelled">Cancelled</option>
                 <option value="all">All Status</option>
               </select>
-              <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-violet-500">
+              <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
               </div>
               <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-text-muted">
@@ -422,7 +421,7 @@ export function Subscriptions() {
                   </p>
                   <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
                     {(search || filterStatus !== 'active') && (
-                      <button type="button" onClick={() => { setSearch(''); setFilterStatus('active'); }} className="text-xs font-bold text-violet-500 transition-colors hover:text-fuchsia-500 flex items-center gap-1">
+                      <button type="button" onClick={() => { setSearch(''); setFilterStatus('active'); }} className="text-xs font-bold text-emerald-500 transition-colors hover:text-emerald-400 flex items-center gap-1">
                         Clear filters <X className="w-3 h-3" />
                       </button>
                     )}
@@ -456,7 +455,7 @@ export function Subscriptions() {
                   return (
                     <motion.div key={sub.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: Math.min(index * 0.05, 0.2), duration: 0.3 }} className="w-full">
                       <TiltCard onClick={() => isDeleteMode && toggleSelectSub(sub.id)} isSelectable={isDeleteMode}>
-                        <div className={`group relative flex flex-col xl:flex-row w-full bg-bg-surface border shadow-sm transition-all duration-300 rounded-[24px] overflow-hidden ${isSelected ? 'border-rose-500 ring-2 ring-rose-500/20 shadow-rose-500/10' : 'border-border/60 hover:shadow-xl hover:border-violet-500/30'}`}>
+                        <div className={`group relative flex flex-col xl:flex-row w-full bg-bg-surface border shadow-sm transition-all duration-300 rounded-[24px] overflow-hidden ${isSelected ? 'border-rose-500 ring-2 ring-rose-500/20 shadow-rose-500/10' : 'border-border/60 hover:shadow-xl hover:border-emerald-500/30'}`}>
                           
                           {isDeleteMode && (
                             <div className="absolute top-1/2 -translate-y-1/2 left-5 z-20">
@@ -467,15 +466,15 @@ export function Subscriptions() {
                           )}
 
                           <div className={`flex-1 p-5 flex items-center gap-4 relative transition-opacity min-w-0 ${isDeleteMode ? 'pl-14' : 'pl-5'}`}>
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                             <div className="shrink-0"><SubscriptionLogo name={sub.name} websiteUrl={sub.websiteUrl} category={sub.category} className="h-12 w-12 rounded-xl" /></div>
                             <div className="flex-1 min-w-0">
                               <h3 className="font-bold text-lg leading-tight line-clamp-1 text-text-primary">{sub.name}</h3>
                               <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mt-0.5">{getCategoryLabel(sub.category)}</p>
                             </div>
                             <div className="flex flex-col items-end gap-1 shrink-0">
-                              {(sub as any).isShared && (
-                                <span className="flex items-center gap-1 text-[10px] font-bold text-violet-500 bg-violet-500/10 px-2 py-0.5 rounded-md"><Users size={12} /> Shared</span>
+                              {(sub as any).isShared && (sub as any).sharedWith?.length > 0 && (
+                                <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-md"><Users size={12} /> Shared</span>
                               )}
                             </div>
                           </div>
@@ -489,12 +488,12 @@ export function Subscriptions() {
                             <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider xl:mb-1.5">Renewal</p>
                             <div className="text-right xl:text-center">
                               <p className="text-sm font-bold text-text-primary">{sub.status === 'active' ? formatDate(sub.renewalDate) : 'Cancelled'}</p>
-                              {sub.status === 'active' && (<p className="text-[10px] font-semibold text-violet-500 mt-0.5">in {getDaysUntilRenewal(sub.renewalDate)} days</p>)}
+                              {sub.status === 'active' && (<p className="text-[10px] font-semibold text-emerald-500 mt-0.5">in {getDaysUntilRenewal(sub.renewalDate)} days</p>)}
                             </div>
                           </div>
 
                           <div className={`xl:w-[240px] p-4 flex items-center justify-center gap-2 xl:border-l-2 border-t-2 xl:border-t-0 border-slate-300 dark:border-slate-600 transition-opacity ${isDeleteMode ? 'opacity-40 pointer-events-none' : ''}`}>
-                            <button onClick={(e) => { e.stopPropagation(); setShowEdit(sub); }} className="flex-1 flex flex-col items-center justify-center gap-1.5 py-2.5 rounded-xl text-fuchsia-700 bg-fuchsia-500/10 hover:bg-fuchsia-500/20 dark:text-fuchsia-400 transition-all">
+                            <button onClick={(e) => { e.stopPropagation(); setShowEdit(sub); }} className="flex-1 flex flex-col items-center justify-center gap-1.5 py-2.5 rounded-xl text-teal-700 bg-teal-500/10 hover:bg-teal-500/20 dark:text-teal-400 transition-all">
                               <Pencil size={16} /><span className="text-[10px] font-bold">Edit</span>
                             </button>
                             <div className="w-[2px] h-8 bg-slate-300 dark:bg-slate-600 hidden xl:block" />
@@ -568,7 +567,7 @@ export function Subscriptions() {
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md border ${
                         split.status === 'accepted'
                           ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400' 
-                          : 'bg-violet-500/10 text-violet-600 border-violet-500/20 dark:text-violet-400'
+                          : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400'
                       }`}>
                         {split.status === 'accepted' ? 'Accepted' : 'New Invite'}
                       </span>
@@ -577,7 +576,7 @@ export function Subscriptions() {
                     <div className="bg-bg-hover/50 rounded-xl p-3 mb-5 border border-border/40 flex items-center justify-between">
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Shared by</p>
-                        <p className="text-sm font-bold text-violet-600 dark:text-violet-400">@{owner?.name || 'User'}</p>
+                        <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">@{owner?.name || 'User'}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Renews</p>
@@ -605,7 +604,6 @@ export function Subscriptions() {
                           </button>
                         )}
                         
-                        {/* 🌟 REMOVE / LEAVE BUTTON */}
                         <button 
                           onClick={() => handleRemoveSplit(split._id)} 
                           title="Leave / Remove"

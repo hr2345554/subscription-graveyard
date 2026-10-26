@@ -266,7 +266,7 @@ export default function Dashboard() {
 
   return (
     // 🔥 Spacing Fix: Reduced top padding (pt-2) so it doesn't look awkwardly empty
-    <main className="min-h-screen bg-bg-primary px-4 pt-2 pb-8 text-text-primary sm:px-6 sm:pt-4 lg:px-8 lg:pt-6 transition-colors duration-300">
+    <main className="min-h-screen bg-transparent px-4 pt-2 pb-8 text-text-primary ...">
       <div className="mx-auto w-full max-w-[1600px] space-y-7">
         
         {/* 🌟 COMPACT & BALANCED HEADER 🌟 */}

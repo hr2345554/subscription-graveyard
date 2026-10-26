@@ -1,93 +1,81 @@
-
 @import "tailwindcss";
 
 /* ==========================================
    SUBSCRIPTION GRAVEYARD — THEME SYSTEM
-   Supports: Dark, Light, System-resolved theme
    ========================================== */
 
-/* ---------- Dark theme (default) ---------- */
+/* ---------- Dark theme (Soft & Eye-Friendly) ---------- */
 :root {
   color-scheme: dark;
 
-  --bg-primary: #090b10;
-  --bg-elevated: #11141c;
-  --bg-surface: #191d27;
-  --bg-hover: #1f2433;
+  --bg-primary: #0b0f19; 
+  --bg-elevated: rgba(17, 24, 39, 0.7); 
+  --bg-surface: rgba(31, 41, 55, 0.6);  
+  --bg-hover: rgba(55, 65, 81, 0.5);
 
-  --border: #303643;
-  --border-light: #252a36;
+  --border: rgba(255, 255, 255, 0.08); 
+  --border-light: rgba(255, 255, 255, 0.04);
 
-  --text-primary: #f5f7fa;
-  --text-secondary: #a8b0be;
-  --text-muted: #6b7280;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
 
-  --accent-blue: #3478ff;
-  --accent-violet: #8757ff;
-  --accent-blue-glow: rgba(52, 120, 255, 0.15);
-  --accent-violet-glow: rgba(135, 87, 255, 0.15);
+  --accent-blue: #3b82f6;
+  --accent-violet: #8b5cf6;
+  --accent-blue-glow: rgba(59, 130, 246, 0.15);
+  --accent-violet-glow: rgba(139, 92, 246, 0.15);
 
-  --success: #22c55e;
+  --success: #10b981;
   --danger: #ef4444;
   --warning: #f59e0b;
 
-  --card-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  --card-shadow: 0 4px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --card-hover-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(59, 130, 246, 0.2);
 
-  --card-hover-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(52, 120, 255, 0.1);
-
-  --overlay: rgba(0, 0, 0, 0.65);
-  --scrollbar-thumb: #3a4150;
-  --selection-bg: rgba(52, 120, 255, 0.3);
+  --overlay: rgba(0, 0, 0, 0.7);
+  --scrollbar-thumb: #334155;
+  --selection-bg: rgba(59, 130, 246, 0.3);
   --selection-text: #ffffff;
 
-  --tombstone-start: #1f2433;
-  --tombstone-end: #151821;
+  --tombstone-start: #1e293b;
+  --tombstone-end: #0f172a;
 }
 
-/* ---------- Light theme ---------- */
+/* ---------- Light theme (Clean & Soft) ---------- */
 :root[data-theme="light"] {
   color-scheme: light;
 
-  --bg-primary: #f4f6fb;
-  --bg-elevated: #ffffff;
-  --bg-surface: #f0f3f9;
-  --bg-hover: #e7ecf6;
+  --bg-primary: #f8fafc; 
+  --bg-elevated: rgba(255, 255, 255, 0.85); 
+  --bg-surface: rgba(255, 255, 255, 0.6);  
+  --bg-hover: rgba(241, 245, 249, 0.8);
 
-  --border: #dce2ed;
-  --border-light: #e8ecf4;
+  --border: rgba(0, 0, 0, 0.06);
+  --border-light: rgba(0, 0, 0, 0.03);
 
-  --text-primary: #20283a;
-  --text-secondary: #536078;
-  --text-muted: #738097;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
 
-  --accent-blue: #315fea;
-  --accent-violet: #7650e8;
-  --accent-blue-glow: rgba(49, 95, 234, 0.1);
-  --accent-violet-glow: rgba(118, 80, 232, 0.1);
+  --accent-blue: #2563eb;
+  --accent-violet: #7c3aed;
+  --accent-blue-glow: rgba(37, 99, 235, 0.1);
+  --accent-violet-glow: rgba(124, 58, 237, 0.1);
 
-  --success: #168653;
-  --danger: #d9364f;
-  --warning: #a86408;
+  --success: #059669;
+  --danger: #dc2626;
+  --warning: #d97706;
 
-  --card-shadow:
-    0 4px 18px rgba(31, 41, 55, 0.05),
-    0 1px 2px rgba(31, 41, 55, 0.03);
+  --card-shadow: 0 4px 20px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.03);
+  --card-hover-shadow: 0 10px 30px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(37, 99, 235, 0.1);
 
-  --card-hover-shadow:
-    0 10px 28px rgba(31, 41, 55, 0.09),
-    0 0 0 1px rgba(49, 95, 234, 0.12);
-
-  --overlay: rgba(24, 32, 48, 0.4);
-  --scrollbar-thumb: #c5cede;
-  --selection-bg: rgba(49, 95, 234, 0.2);
-  --selection-text: #20283a;
+  --overlay: rgba(15, 23, 42, 0.4);
+  --scrollbar-thumb: #cbd5e1;
+  --selection-bg: rgba(37, 99, 235, 0.2);
+  --selection-text: #0f172a;
 
   --tombstone-start: #ffffff;
-  --tombstone-end: #e9edf5;
+  --tombstone-end: #f1f5f9;
 }
 
 /* ---------- Tailwind theme mapping ---------- */
@@ -132,26 +120,22 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  body {
+   body {
     margin: 0;
     padding: 0;
     min-height: 100vh;
     font-family: var(--font-sans);
     line-height: 1.5;
-    background-color: var(--bg-primary);
+    background-color: transparent; /* 🌟 Yahan Transparent */
     color: var(--text-primary);
-    transition:
-      background-color 0.3s ease,
-      color 0.3s ease;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   #root {
     min-height: 100vh;
-    background-color: var(--bg-primary);
+    background-color: transparent; /* 🌟 Yahan Transparent */
     color: var(--text-primary);
-    transition:
-      background-color 0.3s ease,
-      color 0.3s ease;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   ::selection {
@@ -209,43 +193,34 @@
 
 /* ---------- Theme-aware components ---------- */
 @layer components {
-  /* Cards: white in light mode, glass-dark in dark mode */
+  /* Cards: Glassmorphism */
   .glass-card {
     position: relative;
     color: var(--text-primary);
     background: var(--bg-elevated);
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: 20px;
     box-shadow: var(--card-shadow);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    transition:
-      background-color 0.3s ease,
-      border-color 0.3s ease,
-      color 0.3s ease,
-      box-shadow 0.3s ease;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    transition: all 0.3s ease;
   }
 
   :root:not([data-theme="light"]) .glass-card {
     background: linear-gradient(
       135deg,
-      rgba(25, 29, 39, 0.92),
-      rgba(17, 20, 28, 0.96)
+      rgba(30, 41, 59, 0.6),
+      rgba(15, 23, 42, 0.8)
     );
   }
 
   :root[data-theme="light"] .glass-card {
-    background: #ffffff;
+    background: rgba(255, 255, 255, 0.75);
     border-color: var(--border);
-    box-shadow: var(--card-shadow);
   }
 
   .glass-card-hover {
-    transition:
-      transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      border-color 0.3s ease,
-      box-shadow 0.3s ease,
-      background-color 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
   }
 
   .glass-card-hover:hover {
@@ -271,19 +246,10 @@
     z-index: -1;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(
-      135deg,
-      var(--accent-blue),
-      var(--accent-violet),
-      var(--accent-blue)
-    );
-    mask:
-      linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-violet), var(--accent-blue));
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask-composite: exclude;
-    -webkit-mask:
-      linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     opacity: 0.5;
     transition: opacity 0.3s ease;
@@ -296,22 +262,14 @@
 
   /* Gradient text */
   .text-gradient-blue {
-    background: linear-gradient(
-      135deg,
-      var(--accent-blue),
-      var(--accent-violet)
-    );
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-violet));
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
   }
 
   .text-gradient-silver {
-    background: linear-gradient(
-      135deg,
-      var(--text-primary),
-      var(--text-secondary)
-    );
+    background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -330,19 +288,11 @@
   .tombstone-card {
     position: relative;
     color: var(--text-primary);
-    background: linear-gradient(
-      180deg,
-      var(--tombstone-start) 0%,
-      var(--tombstone-end) 100%
-    );
+    background: linear-gradient(180deg, var(--tombstone-start) 0%, var(--tombstone-end) 100%);
     border: 1px solid var(--border);
     border-radius: 50% 50% 12px 12px / 20% 20% 12px 12px;
     box-shadow: var(--card-shadow);
-    transition:
-      background 0.3s ease,
-      border-color 0.3s ease,
-      color 0.3s ease,
-      box-shadow 0.3s ease;
+    transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
   }
 
   /* Shimmer effect */
@@ -355,12 +305,7 @@
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      var(--accent-blue-glow),
-      transparent
-    );
+    background: linear-gradient(90deg, transparent, var(--accent-blue-glow), transparent);
     animation: shimmer 3s infinite;
     pointer-events: none;
   }
@@ -368,107 +313,46 @@
 
 /* ---------- Animations ---------- */
 @keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-
-  100% {
-    transform: translateX(100%);
-  }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 @keyframes float {
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-
-  25% {
-    transform: translate(10px, -15px);
-  }
-
-  50% {
-    transform: translate(-5px, -25px);
-  }
-
-  75% {
-    transform: translate(-15px, -10px);
-  }
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(10px, -15px); }
+  50% { transform: translate(-5px, -25px); }
+  75% { transform: translate(-15px, -10px); }
 }
 
 @keyframes pulse-glow {
-  0%,
-  100% {
-    opacity: 0.4;
-  }
-
-  50% {
-    opacity: 0.8;
-  }
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
 }
 
 @keyframes sparkle {
-  0%,
-  100% {
-    opacity: 0;
-    transform: scale(0);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1);
-  }
+  0%, 100% { opacity: 0; transform: scale(0); }
+  50% { opacity: 1; transform: scale(1); }
 }
 
 @keyframes drift {
-  0% {
-    transform: translate(0, 0) rotate(0deg);
-  }
-
-  25% {
-    transform: translate(30px, -20px) rotate(90deg);
-  }
-
-  50% {
-    transform: translate(-10px, -40px) rotate(180deg);
-  }
-
-  75% {
-    transform: translate(-30px, -15px) rotate(270deg);
-  }
-
-  100% {
-    transform: translate(0, 0) rotate(360deg);
-  }
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(30px, -20px) rotate(90deg); }
+  50% { transform: translate(-10px, -40px) rotate(180deg); }
+  75% { transform: translate(-30px, -15px) rotate(270deg); }
+  100% { transform: translate(0, 0) rotate(360deg); }
 }
 
 @keyframes butterfly-fly {
-  0% {
-    transform: translate(0, 0) rotate(0deg);
-  }
-
-  25% {
-    transform: translate(40px, -30px) rotate(5deg);
-  }
-
-  50% {
-    transform: translate(80px, -10px) rotate(-5deg);
-  }
-
-  75% {
-    transform: translate(40px, -40px) rotate(3deg);
-  }
-
-  100% {
-    transform: translate(0, 0) rotate(0deg);
-  }
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(40px, -30px) rotate(5deg); }
+  50% { transform: translate(80px, -10px) rotate(-5deg); }
+  75% { transform: translate(40px, -40px) rotate(3deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
 }
 
 /* ---------- Reduced motion accessibility ---------- */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -478,7 +362,6 @@
 
 /* ==========================================
    SUBSCRIPTION GRAVEYARD — VISUAL REDESIGN
-   Bold cards • Neon glass • Light/dark aware
    ========================================== */
 
 .dashboard-premium {
@@ -492,10 +375,6 @@
   --dash-pink: #ff78bb;
 }
 
-/* ==========================================
-   METRIC CARDS — bold permanent appearance
-   ========================================== */
-
 .dashboard-premium .premium-metric-card {
   position: relative;
   isolation: isolate;
@@ -505,16 +384,8 @@
   border: 1px solid var(--card-accent);
   border-radius: 24px;
   background:
-    radial-gradient(
-      circle at 88% 8%,
-      var(--card-halo),
-      transparent 43%
-    ),
-    linear-gradient(
-      135deg,
-      var(--card-surface-start),
-      var(--card-surface-end)
-    );
+    radial-gradient(circle at 88% 8%, var(--card-halo), transparent 43%),
+    linear-gradient(135deg, var(--card-surface-start), var(--card-surface-end));
   box-shadow:
     0 14px 34px var(--card-shadow),
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
@@ -525,7 +396,6 @@
     border-color 220ms ease;
 }
 
-/* Oversized decorative light orb */
 .dashboard-premium .premium-metric-card::before {
   content: "";
   position: absolute;
@@ -535,15 +405,10 @@
   right: -55px;
   top: -85px;
   border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    var(--card-orb),
-    transparent 70%
-  );
+  background: radial-gradient(circle, var(--card-orb), transparent 70%);
   pointer-events: none;
 }
 
-/* Strong permanent luminous accent */
 .dashboard-premium .premium-metric-card::after {
   content: "";
   position: absolute;
@@ -552,13 +417,7 @@
   right: 0;
   bottom: 0;
   height: 5px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--card-accent),
-    var(--card-accent-bright),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, var(--card-accent), var(--card-accent-bright), transparent);
   box-shadow: 0 0 20px var(--card-accent);
   pointer-events: none;
 }
@@ -568,7 +427,6 @@
   z-index: 1;
 }
 
-/* Labels */
 .dashboard-premium .premium-metric-card > div:first-child > span {
   color: var(--text-primary);
   font-size: 11px;
@@ -577,7 +435,6 @@
   line-height: 1.6;
 }
 
-/* Prominent numbers */
 .dashboard-premium .premium-metric-card h2 {
   font-size: clamp(2rem, 3vw, 2.65rem);
   line-height: 1.15;
@@ -588,7 +445,6 @@
   text-shadow: 0 0 22px var(--card-halo);
 }
 
-/* Icon tiles */
 .dashboard-premium .premium-metric-card > div:first-child > div {
   display: flex;
   align-items: center;
@@ -611,7 +467,6 @@
   stroke-width: 2.2;
 }
 
-/* Monthly Spend — glowing amber */
 .dashboard-premium .premium-metric-amber {
   --card-accent: #f4a62f;
   --card-accent-bright: #ffe2a0;
@@ -624,7 +479,6 @@
   --card-surface-end: #191b22;
 }
 
-/* Active Subscriptions — rich violet */
 .dashboard-premium .premium-metric-violet {
   --card-accent: #9a78ff;
   --card-accent-bright: #d5c3ff;
@@ -637,7 +491,6 @@
   --card-surface-end: #191923;
 }
 
-/* Upcoming Renewals — electric blue */
 .dashboard-premium .premium-metric-blue {
   --card-accent: #4e9dff;
   --card-accent-bright: #a7d7ff;
@@ -650,10 +503,6 @@
   --card-surface-end: #171c28;
 }
 
-/* ==========================================
-   CHART CARDS — larger editorial panels
-   ========================================== */
-
 .dashboard-premium .premium-chart-card {
   position: relative;
   isolation: isolate;
@@ -663,22 +512,12 @@
   border: 1px solid var(--chart-accent);
   border-radius: 24px;
   background:
-    radial-gradient(
-      ellipse at 100% 0%,
-      var(--chart-halo),
-      transparent 45%
-    ),
-    linear-gradient(
-      145deg,
-      var(--chart-surface-start),
-      var(--chart-surface-end)
-    );
+    radial-gradient(ellipse at 100% 0%, var(--chart-halo), transparent 45%),
+    linear-gradient(145deg, var(--chart-surface-start), var(--chart-surface-end));
   box-shadow:
     0 14px 35px var(--chart-shadow),
     inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  transition:
-    transform 220ms ease,
-    box-shadow 220ms ease;
+  transition: transform 220ms ease, box-shadow 220ms ease;
 }
 
 .dashboard-premium .premium-chart-card::before {
@@ -689,11 +528,7 @@
   width: 95px;
   height: 4px;
   border-radius: 0 0 8px 8px;
-  background: linear-gradient(
-    90deg,
-    var(--chart-accent),
-    var(--chart-accent-bright)
-  );
+  background: linear-gradient(90deg, var(--chart-accent), var(--chart-accent-bright));
   box-shadow: 0 0 18px var(--chart-accent);
 }
 
@@ -716,11 +551,7 @@
   height: 3px;
   margin-top: 10px;
   border-radius: 4px;
-  background: linear-gradient(
-    90deg,
-    var(--chart-accent),
-    var(--chart-accent-bright)
-  );
+  background: linear-gradient(90deg, var(--chart-accent), var(--chart-accent-bright));
 }
 
 .dashboard-premium .premium-chart-trend {
@@ -741,16 +572,10 @@
   --chart-surface-end: #191e28;
 }
 
-/* Make chart bars feel more substantial */
 .dashboard-premium .premium-chart-trend [class~="w-3"] {
   width: 18px;
   border: 1px solid rgba(255, 255, 255, 0.28);
-  background: linear-gradient(
-    180deg,
-    #ffd080 0%,
-    #ffad42 55%,
-    #ef783a 100%
-  );
+  background: linear-gradient(180deg, #ffd080 0%, #ffad42 55%, #ef783a 100%);
   box-shadow: 0 0 13px rgba(255, 166, 59, 0.22);
 }
 
@@ -758,10 +583,6 @@
   border: 1px solid rgba(255, 255, 255, 0.25);
   box-shadow: 0 0 12px rgba(130, 142, 255, 0.16);
 }
-
-/* ==========================================
-   DUE SOON — distinct renewal cards
-   ========================================== */
 
 .dashboard-premium .premium-due-card {
   position: relative;
@@ -773,19 +594,12 @@
   border-left: 4px solid var(--due-accent);
   border-radius: 18px;
   background:
-    linear-gradient(
-      110deg,
-      var(--due-glow),
-      transparent 65%
-    ),
+    linear-gradient(110deg, var(--due-glow), transparent 65%),
     var(--bg-elevated);
   box-shadow:
     0 8px 22px rgba(0, 0, 0, 0.09),
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  transition:
-    transform 200ms ease,
-    border-color 200ms ease,
-    box-shadow 200ms ease;
+  transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
   --due-accent: #9e82ff;
   --due-border: rgba(158, 130, 255, 0.48);
   --due-glow: rgba(158, 130, 255, 0.12);
@@ -819,27 +633,19 @@
   white-space: nowrap;
 }
 
-/* ==========================================
-   LIGHT MODE — bright chrome and clean color
-   ========================================== */
-
 :root[data-theme="light"] .dashboard-premium .premium-metric-card {
   --card-surface-start: #ffffff;
   --card-surface-end: #f5f7fc;
   --card-number: var(--card-accent);
   --card-shadow: rgba(45, 57, 89, 0.09);
-  box-shadow:
-    0 14px 30px rgba(45, 57, 89, 0.09),
-    inset 0 1px 0 #ffffff;
+  box-shadow: 0 14px 30px rgba(45, 57, 89, 0.09), inset 0 1px 0 #ffffff;
 }
 
 :root[data-theme="light"] .dashboard-premium .premium-chart-card {
   --chart-surface-start: #ffffff;
   --chart-surface-end: #f6f8fc;
   --chart-shadow: rgba(45, 57, 89, 0.07);
-  box-shadow:
-    0 14px 30px rgba(45, 57, 89, 0.075),
-    inset 0 1px 0 #ffffff;
+  box-shadow: 0 14px 30px rgba(45, 57, 89, 0.075), inset 0 1px 0 #ffffff;
 }
 
 :root[data-theme="light"] .dashboard-premium .premium-metric-card > div:first-child > span,
@@ -849,33 +655,20 @@
 
 :root[data-theme="light"] .dashboard-premium .premium-due-card {
   --due-glow: rgba(116, 94, 218, 0.07);
-  background:
-    linear-gradient(110deg, var(--due-glow), transparent 70%),
-    #ffffff;
-  box-shadow:
-    0 8px 22px rgba(45, 57, 89, 0.075),
-    inset 0 1px 0 #ffffff;
+  background: linear-gradient(110deg, var(--due-glow), transparent 70%), #ffffff;
+  box-shadow: 0 8px 22px rgba(45, 57, 89, 0.075), inset 0 1px 0 #ffffff;
 }
-
-/* ==========================================
-   INTERACTION — enhancements, not hover-only
-   ========================================== */
 
 @media (hover: hover) {
   .dashboard-premium .premium-metric-card:hover {
     transform: translateY(-5px);
     border-color: var(--card-accent-bright);
-    box-shadow:
-      0 22px 42px var(--card-shadow),
-      0 0 28px var(--card-halo),
-      inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    box-shadow: 0 22px 42px var(--card-shadow), 0 0 28px var(--card-halo), inset 0 1px 0 rgba(255, 255, 255, 0.22);
   }
 
   .dashboard-premium .premium-chart-card:hover {
     transform: translateY(-4px);
-    box-shadow:
-      0 22px 42px var(--chart-shadow),
-      0 0 24px var(--chart-halo);
+    box-shadow: 0 22px 42px var(--chart-shadow), 0 0 24px var(--chart-halo);
   }
 
   .dashboard-premium .premium-due-card:hover {
@@ -885,39 +678,18 @@
   }
 }
 
-/* Responsive spacing */
 @media (max-width: 640px) {
-  .dashboard-premium {
-    padding: 16px;
-  }
-
+  .dashboard-premium { padding: 16px; }
   .dashboard-premium .premium-metric-card,
   .dashboard-premium .premium-chart-card {
     padding: 21px;
     border-radius: 20px;
   }
-
-  .dashboard-premium .premium-metric-card {
-    min-height: 150px;
-  }
-
-  .dashboard-premium .premium-chart-card {
-    min-height: 320px;
-  }
-
-  .dashboard-premium .premium-metric-card h2 {
-    font-size: 2rem;
-  }
-
-  .dashboard-premium .premium-due-card {
-    padding: 13px;
-    gap: 8px;
-  }
-
-  .dashboard-premium .premium-due-card > span:last-child {
-    padding: 7px 8px;
-    font-size: 12px;
-  }
+  .dashboard-premium .premium-metric-card { min-height: 150px; }
+  .dashboard-premium .premium-chart-card { min-height: 320px; }
+  .dashboard-premium .premium-metric-card h2 { font-size: 2rem; }
+  .dashboard-premium .premium-due-card { padding: 13px; gap: 8px; }
+  .dashboard-premium .premium-due-card > span:last-child { padding: 7px 8px; font-size: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -926,15 +698,9 @@
   .dashboard-premium .premium-due-card {
     transition: none;
   }
-
   .dashboard-premium .premium-metric-card:hover,
   .dashboard-premium .premium-chart-card:hover,
   .dashboard-premium .premium-due-card:hover {
     transform: none;
-  }
-}
-@keyframes shimmer {
-  100% {
-    transform: translateX(100%);
   }
 }

@@ -94,38 +94,38 @@ export function Graveyard() {
                 >
                   <div className="relative h-full transition-transform duration-300 group-hover:rotate-0 group-hover:-translate-y-2">
                     
-                    {/* 🌟 COMPACT POLAROID CARD (Ambient Amber/Gold Vibes) 🌟 */}
-                    <div className="relative flex flex-col h-full rounded-sm bg-white dark:bg-[#121212] group-hover:bg-gradient-to-br group-hover:from-amber-100/60 group-hover:to-orange-100/40 dark:group-hover:from-amber-900/20 dark:group-hover:to-orange-900/10 transition-all duration-500 p-2.5 pb-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] group-hover:shadow-[0_8px_30px_rgba(245,158,11,0.15)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.6)] border border-slate-200 group-hover:border-amber-400/50 dark:border-slate-800 dark:group-hover:border-amber-500/30">
+                    {/* 🌟 COMPACT POLAROID CARD (NO HOVER COLORS) 🌟 */}
+                    <div className="relative flex flex-col h-full rounded-sm bg-white dark:bg-[#121212] p-2.5 pb-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.6)] border border-slate-200 dark:border-slate-800 transition-all duration-300">
                       
-                      {/* Tape Effect (Golden tape) */}
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-14 h-5 bg-slate-200/80 group-hover:bg-amber-200/90 dark:bg-slate-700/80 dark:group-hover:bg-amber-500/30 backdrop-blur-sm rotate-[-2deg] shadow-sm z-20 transition-colors duration-500" />
+                      {/* Tape Effect */}
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-14 h-5 bg-slate-200/80 dark:bg-slate-700/80 backdrop-blur-sm rotate-[-2deg] shadow-sm z-20" />
 
-                      {/* Photo Area (Warm glow background) */}
-                      <div className="relative h-28 w-full overflow-hidden bg-slate-100 dark:bg-[#050505] group-hover:bg-gradient-to-tr group-hover:from-amber-200/50 group-hover:to-orange-100/50 dark:group-hover:from-amber-900/30 dark:group-hover:to-orange-900/20 flex items-center justify-center mb-3 transition-colors duration-500">
+                      {/* Photo Area */}
+                      <div className="relative h-28 w-full overflow-hidden bg-slate-100 dark:bg-[#050505] flex items-center justify-center mb-3">
                         <div className="absolute inset-0 bg-gradient-to-tr from-black/5 to-transparent dark:from-white/5 pointer-events-none" />
                         <SubscriptionLogo 
                           name={sub.name} 
                           websiteUrl={sub.websiteUrl} 
                           category={sub.category} 
-                          className="h-12 w-12 rounded-xl filter grayscale opacity-50 dark:opacity-30 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500" 
+                          className="h-12 w-12 rounded-xl filter grayscale opacity-50 dark:opacity-30" 
                         />
-                        <div className="absolute inset-0 bg-white/10 dark:bg-black/40 group-hover:bg-transparent pointer-events-none transition-colors duration-500" />
+                        <div className="absolute inset-0 bg-white/10 dark:bg-black/40 pointer-events-none" />
                       </div>
 
-                      {/* Memory Text (Warm Amber text) */}
+                      {/* Memory Text */}
                       <div className="text-center px-1">
-                        <h3 className="font-serif text-base font-bold text-slate-800 dark:text-slate-100 group-hover:text-amber-700 dark:group-hover:text-amber-300 mb-0.5 line-clamp-1 transition-colors duration-500">
+                        <h3 className="font-serif text-base font-bold text-slate-800 dark:text-slate-100 mb-0.5 line-clamp-1">
                           {sub.name}
                         </h3>
-                        <p className="text-[9px] uppercase tracking-widest text-slate-500 dark:text-slate-400 group-hover:text-amber-600/80 dark:group-hover:text-amber-400/80 mb-3 transition-colors duration-500">
+                        <p className="text-[9px] uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3">
                           {getCategoryLabel(sub.category)}
                         </p>
                         
-                        <div className="flex items-center justify-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 border-t border-slate-100 group-hover:border-amber-300/50 dark:border-slate-800 dark:group-hover:border-amber-700/50 pt-2.5 transition-colors duration-500">
+                        <div className="flex items-center justify-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-2.5">
                           <span>{formatCurrency(sub.price, sub.currency)}</span>
                           {sub.cancellationDate && (
                             <>
-                              <span className="w-1 h-1 rounded-full bg-slate-300 group-hover:bg-amber-400 dark:bg-slate-600 transition-colors duration-500" />
+                              <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
                               <span>{formatDate(sub.cancellationDate)}</span>
                             </>
                           )}
@@ -155,28 +155,69 @@ export function Graveyard() {
         </motion.div>
       )}
 
-      {/* Memorial Modal (Normal) */}
+      {/* 🌟 MEMORIAL MODAL (Vintage Amber/Orange Theme + First Letter) 🌟 */}
       <AnimatePresence>
         {selected && (
           <Modal isOpen={true} onClose={() => setSelected(null)} title="Memorial" size="md">
             <div className="text-center">
-              <div className="text-4xl mb-3">🪦</div>
-              <h2 className="text-xl font-bold text-text-primary mb-1">{selected.name}</h2>
-              <p className="text-sm text-text-muted mb-4">{getCategoryLabel(selected.category)}</p>
-              <div className="glass-card p-4 space-y-3 text-left mb-4">
-                <div className="flex justify-between"><span className="text-sm text-text-muted">Price</span><span className="text-sm font-medium">{formatCurrency(selected.price, selected.currency)} / {selected.billingFrequency}</span></div>
+              
+              {/* Vintage Header with First Letter */}
+              <div className="mb-6 flex flex-col items-center">
+                <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-100 to-orange-200 dark:from-amber-900/60 dark:to-orange-900/40 border-2 border-amber-500/40 shadow-inner mb-4">
+                  <span className="text-4xl font-serif font-black text-amber-800 dark:text-amber-300 drop-shadow-sm">
+                    {selected.name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <h2 className="text-2xl font-serif font-black text-amber-900 dark:text-amber-300">{selected.name}</h2>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-amber-700/60 dark:text-amber-500/60 mt-1">{getCategoryLabel(selected.category)}</p>
+              </div>
+
+              {/* Vintage Info Box */}
+              <div className="relative overflow-hidden rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/20 p-5 space-y-3 text-left mb-6 shadow-sm">
+                <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-amber-500/10 blur-2xl pointer-events-none" />
+                
+                <div className="flex justify-between items-center pb-2 border-b border-amber-500/20">
+                  <span className="text-sm font-medium text-amber-700/70 dark:text-amber-400/70">Price</span>
+                  <span className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                    {formatCurrency(selected.price, selected.currency)} / {selected.billingFrequency}
+                  </span>
+                </div>
+                
                 {selected.cancellationDate && (
-                  <div className="flex justify-between"><span className="text-sm text-text-muted">Cancelled</span><span className="text-sm font-medium">{formatDate(selected.cancellationDate)}</span></div>
+                  <div className="flex justify-between items-center pb-2 border-b border-amber-500/20">
+                    <span className="text-sm font-medium text-amber-700/70 dark:text-amber-400/70">Cancelled On</span>
+                    <span className="text-sm font-bold text-amber-900 dark:text-amber-200">{formatDate(selected.cancellationDate)}</span>
+                  </div>
                 )}
-                <div className="flex justify-between"><span className="text-sm text-text-muted">Saving</span><span className="text-sm font-semibold text-success">{formatCurrency(toMonthlyAmount(Number(selected.price) || 0, selected.billingFrequency), selected.currency)}/mo</span></div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-amber-700/70 dark:text-amber-400/70">Saving</span>
+                  <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(toMonthlyAmount(Number(selected.price) || 0, selected.billingFrequency), selected.currency)}/mo
+                  </span>
+                </div>
+
                 {selected.cancellationReason && (
-                  <div className="pt-2 border-t border-border">
-                    <p className="text-xs text-text-muted flex items-center gap-1 mb-1"><MessageSquare className="w-3 h-3" /> Reason</p>
-                    <p className="text-sm text-text-secondary italic">"{selected.cancellationReason}"</p>
+                  <div className="pt-3 border-t border-amber-500/20">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700/60 dark:text-amber-500/60 flex items-center gap-1.5 mb-1.5">
+                      <MessageSquare className="w-3.5 h-3.5" /> Reason
+                    </p>
+                    <p className="text-sm text-amber-900/80 dark:text-amber-200/80 italic bg-amber-500/10 p-3 rounded-lg border border-amber-500/20">
+                      "{selected.cancellationReason}"
+                    </p>
                   </div>
                 )}
               </div>
-              <Button variant="success" icon={<RotateCcw className="w-4 h-4" />} onClick={() => handleRestore(selected)} className="w-full">Restore Subscription</Button>
+
+              {/* Vintage Restore Button */}
+              <Button 
+                variant="glow" 
+                icon={<RotateCcw className="w-4 h-4" />} 
+                onClick={() => handleRestore(selected)} 
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0 shadow-lg shadow-amber-500/20 py-3 text-base font-bold"
+              >
+                Restore Subscription
+              </Button>
             </div>
           </Modal>
         )}
