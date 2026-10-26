@@ -25,9 +25,7 @@ import {
   EyeOff,
   LockKeyhole,
   Mail,
-  Moon,
   ShieldCheck,
-  Sun,
   Skull,
   Loader2,
 } from 'lucide-react';
@@ -36,7 +34,11 @@ import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import OrbitingSubscriptions from '../components/animations/OrbitingSubscriptions';
+
+// 🌟 ANIMATIONS & EFFECTS
+import { AmbientBackground } from '../components/animations/AmbientBackground';
+import { GlitchText } from '../components/animations/GlitchText';
+import { DataRunners } from '../components/animations/DataRunners';
 import './auth.css';
 
 type AuthMode = 'login' | 'signup';
@@ -133,7 +135,7 @@ const MagneticButton = ({ children, className, ...props }: any) => {
 export function Login() {
   const navigate = useNavigate();
   const { login, signup } = useAuth();
-  const { resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme } = useTheme();
   const reduceMotion = useReducedMotion();
 
   // ==========================================
@@ -147,8 +149,9 @@ export function Login() {
   const smoothX = useSpring(mouseX, springConfig);
   const smoothY = useSpring(mouseY, springConfig);
 
-  const bgX = useTransform(smoothX, [-1, 1], [-15, 15]);
-  const bgY = useTransform(smoothY, [-1, 1], [-15, 15]);
+  // 🌟 BACKGROUND PARALLAX
+  const bgX = useTransform(smoothX, [-1, 1], [-30, 30]);
+  const bgY = useTransform(smoothY, [-1, 1], [-30, 30]);
 
   const rotateX = useTransform(smoothY, [-1, 1], [4, -4]);
   const rotateY = useTransform(smoothX, [-1, 1], [-4, 4]);
@@ -286,22 +289,31 @@ export function Login() {
     setSignupSuccess('');
     setShowPassword(false);
     clearErrors();
-    reset({ email: '', password: '' }); // Clear both fields on mode switch
-  };
-
-  const toggleTheme = () => {
-    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+    reset({ email: '', password: '' });
   };
 
   return (
     <main
       ref={mainRef}
       onMouseMove={handleMouseMove}
-      className={`auth-page ${
+      className={`auth-page relative ${
         resolvedTheme === 'light' ? 'auth-light' : 'auth-dark'
       }`}
       style={{ perspective: 1200 }}
     >
+      {/* 🌟 FIXED BACKGROUND WITH WARP SPEED 🌟 */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <motion.div 
+          style={{ x: bgX, y: bgY }} 
+          className="absolute -inset-10" 
+        >
+           <AmbientBackground warp={isSuccess} />
+        </motion.div>
+      </div>
+
+      {/* 🌟 NEW: TRON DATA RUNNERS 🌟 */}
+      <DataRunners smoothX={smoothX} smoothY={smoothY} />
+
       <section
         className={`auth-scene ${
           submitError ? 'is-error' : ''
@@ -309,13 +321,8 @@ export function Login() {
         aria-label="Subscription app animation"
       >
         <div className="auth-scene-overlay" />
-        
-        {/* Parallax wrapper for background elements */}
-        <motion.div style={{ x: bgX, y: bgY }} className="absolute inset-0 pointer-events-none z-0">
-           <OrbitingSubscriptions />
-        </motion.div>
 
-        <div className="scene-copy">
+        <div className="scene-copy relative z-20">
           <motion.div
             initial={reduceMotion ? false : { opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
@@ -329,13 +336,21 @@ export function Login() {
             initial={reduceMotion ? false : { opacity: 0, y: 25 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.1 }}
+            className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tighter text-slate-900 dark:text-white drop-shadow-lg"
           >
             Your money.
             <br />
-            <span>Your rules.</span>
+            <span className="relative inline-block mt-2">
+              <GlitchText 
+                text="Your rules." 
+                className="text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 via-violet-500 to-cyan-500" 
+              />
+            </span>
           </motion.h1>
 
-          <p>Track recurring costs and upcoming renewals.</p>
+          <p className="relative z-20 text-slate-700 dark:text-slate-300 font-medium">
+            Track recurring costs and upcoming renewals.
+          </p>
 
           <div className="scene-bottom-note">
             <span className="scene-note-line" />
@@ -346,7 +361,7 @@ export function Login() {
         <div className="scene-coordinate">SG — SUBSCRIPTION CONTROL</div>
       </section>
 
-      <section className="auth-panel">
+      <section className="auth-panel relative z-30">
         <div className="auth-panel-glow" />
         <div className="auth-mobile-fog" />
 
@@ -411,29 +426,35 @@ export function Login() {
                   x: { duration: 0.38 },
                 }}
               >
-                {/* SPOTLIGHT EFFECT */}
                 <motion.div
                   className="absolute inset-0 pointer-events-none z-0 rounded-3xl"
                   style={{ background: reduceMotion ? 'none' : glowBackground }}
                 />
 
-                {/* 3D POP-OUT CONTENT */}
                 <div style={{ transform: "translateZ(30px)" }} className="relative z-10 h-full">
                   
-                  {/* GHOST REMOVED, ONLY SPARKLE LEFT */}
-                  <div className="auth-decorations">
-                    <svg className="sticker sticker-tr" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 2L13.5 9.5L21 11L13.5 12.5L12 20L10.5 12.5L3 11L10.5 9.5L12 2Z" fill="#c4b5fd" opacity="0.9"/>
-                    </svg>
+                  {/* 🌟 STAR KEPT & REPOSITIONED FOR MOBILE 🌟 */}
+                  <div className="absolute top-0 right-0 z-20">
+                    <motion.div
+                      animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.1, 1] }}
+                      transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                    >
+                      <svg className="w-5 h-5 sm:w-7 sm:h-7 text-fuchsia-500 drop-shadow-[0_0_8px_rgba(217,70,239,0.8)]" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2L13.5 9.5L21 11L13.5 12.5L12 20L10.5 12.5L3 11L10.5 9.5L12 2Z" />
+                      </svg>
+                    </motion.div>
                   </div>
 
-                  <div className="auth-card-top">
-                    <div className="auth-brand-header">
-                      <div className="auth-card-emblem" aria-hidden="true">
-                        <Skull size={32} strokeWidth={2.5} />
+                  <div className="auth-card-top relative">
+                    {/* 🌟 FIXED MOBILE HEADER 🌟 */}
+                    <div className="flex items-center gap-2.5 sm:gap-3 mb-4 pr-6">
+                      <div className="flex shrink-0 items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-black text-white shadow-lg" aria-hidden="true">
+                        <Skull size={22} strokeWidth={2.5} className="sm:w-7 sm:h-7" />
                       </div>
-                      <div className="auth-brand-title">
-                        <h1>Subscription <span>Graveyard</span></h1>
+                      <div className="flex flex-col justify-center">
+                        <h1 className="text-[13px] sm:text-xl font-black tracking-tight leading-tight uppercase">
+                          Subscription <span className="text-[#E50914]">Graveyard</span>
+                        </h1>
                       </div>
                     </div>
 
@@ -450,7 +471,6 @@ export function Login() {
                     </h2>
                   </div>
 
-                  {/* FORM AUTOCOMPLETE OFF */}
                   <form onSubmit={onSubmit} noValidate autoComplete="off" className="auth-form flex flex-col gap-4">
                     <motion.div
                       className={`auth-field ${
@@ -668,7 +688,6 @@ export function Login() {
         </div>
       </section>
 
-      {/* PASSWORD RESET MODAL */}
       <Modal 
         isOpen={showReset} 
         onClose={() => {

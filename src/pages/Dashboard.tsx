@@ -1,90 +1,36 @@
 ﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import {
-  Activity,
-  CheckCircle2,
-  Clock3,
-  CreditCard,
-  Wallet,
-  PieChart as PieIcon,
-  Sparkles,
+  Activity, CheckCircle2, CreditCard,
+  ThumbsUp, ThumbsDown, X 
 } from 'lucide-react';
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { api } from '../api/service';
 import type { Subscription as AppSubscription } from '../types';
 import { SubscriptionLogo } from '../components/ui/SubscriptionLogo';
 
-// ==========================================
-// TEXT SCRAMBLE EFFECT COMPONENT
-// ==========================================
-const TextScramble = ({ text, className }: { text: string; className?: string }) => {
-  const [displayText, setDisplayText] = useState('');
-  const chars = '!<>-_\\/[]{}—=+*^?#________';
-
-  useEffect(() => {
-    let frame = 0;
-    let animationFrameId: number;
-    const queue = text.split('').map((char) => ({
-      from: chars[Math.floor(Math.random() * chars.length)],
-      to: char,
-      start: Math.floor(Math.random() * 40),
-      end: Math.floor(Math.random() * 40) + 40,
-    }));
-
-    const update = () => {
-      let output = '';
-      let complete = 0;
-      for (let i = 0; i < queue.length; i++) {
-        const { from, to, start, end } = queue[i];
-        if (frame >= end) {
-          complete++;
-          output += to;
-        } else if (frame >= start) {
-          if (!queue[i].from || Math.random() < 0.28) {
-            queue[i].from = chars[Math.floor(Math.random() * chars.length)];
-          }
-          output += queue[i].from;
-        } else {
-          output += ' ';
-        }
-      }
-      setDisplayText(output);
-      if (complete !== queue.length) {
-        frame++;
-        animationFrameId = requestAnimationFrame(update);
-      }
-    };
-    update();
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [text]);
-
-  return <span className={className}>{displayText}</span>;
-};
-// ==========================================
-
 interface DashboardSubscription extends AppSubscription {
   billingCycle?: string;
+  isWorthIt?: boolean | null;
 }
 
+// 🔥 Improved Cycle Detection
 const getCycle = (sub: DashboardSubscription): string =>
   String(sub.billingFrequency || sub.billingCycle || 'monthly').toLowerCase();
 
+// 🔥 Improved Math Logic
 const getMonthlyAmount = (sub: DashboardSubscription): number => {
   const price = Number(sub.price) || 0;
   const cycle = getCycle(sub);
+  
   if (cycle.includes('year') || cycle.includes('annual')) return price / 12;
   if (cycle.includes('quarter')) return price / 3;
   if (cycle.includes('week')) return (price * 52) / 12;
   if (cycle.includes('day')) return (price * 365) / 12;
-  return price;
+  return price; // Monthly by default
 };
 
 const currencySymbol = (currency: string): string => {
@@ -103,7 +49,6 @@ const getDaysUntil = (date: string): number => {
   return Math.ceil((renewal.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 };
 
-// 🌟 VIBE COMPARISONS (Random Selection)
 const VIBES = [
   { text: "months of Netflix", divisor: 15.49, emoji: "🍿" },
   { text: "cups of fancy coffee", divisor: 5.00, emoji: "☕" },
@@ -116,30 +61,21 @@ const VIBES = [
 ];
 
 const categoryColors = [
-  { bar: 'from-violet-600 to-fuchsia-400', shadow: 'shadow-violet-500/50', text: 'text-violet-500', soft: 'bg-violet-500/10', dot: 'bg-violet-500' },
-  { bar: 'from-blue-600 to-cyan-400', shadow: 'shadow-blue-500/50', text: 'text-blue-500', soft: 'bg-blue-500/10', dot: 'bg-blue-500' },
-  { bar: 'from-emerald-600 to-teal-400', shadow: 'shadow-emerald-500/50', text: 'text-emerald-500', soft: 'bg-emerald-500/10', dot: 'bg-emerald-500' },
-  { bar: 'from-amber-600 to-yellow-400', shadow: 'shadow-amber-500/50', text: 'text-amber-500', soft: 'bg-amber-500/10', dot: 'bg-amber-500' },
-  { bar: 'from-rose-600 to-pink-400', shadow: 'shadow-rose-500/50', text: 'text-rose-500', soft: 'bg-rose-500/10', dot: 'bg-rose-500' },
+  { text: 'text-violet-500', dot: 'bg-violet-500', bar: 'from-violet-500 to-fuchsia-500', shadow: 'shadow-violet-500/50' },
+  { text: 'text-blue-500', dot: 'bg-blue-500', bar: 'from-blue-500 to-cyan-500', shadow: 'shadow-blue-500/50' },
+  { text: 'text-emerald-500', dot: 'bg-emerald-500', bar: 'from-emerald-500 to-teal-500', shadow: 'shadow-emerald-500/50' },
+  { text: 'text-amber-500', dot: 'bg-amber-500', bar: 'from-amber-500 to-yellow-500', shadow: 'shadow-amber-500/50' },
+  { text: 'text-rose-500', dot: 'bg-rose-500', bar: 'from-rose-500 to-pink-500', shadow: 'shadow-rose-500/50' },
 ];
 
 const lineColors = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4'];
 
-const chartTooltipStyle = {
-  backgroundColor: 'rgba(20, 20, 30, 0.95)',
-  border: '1px solid rgba(255, 255, 255, 0.1)',
-  borderRadius: '12px',
-  color: '#fff',
-  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
-  backdropFilter: 'blur(10px)',
-};
-
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [subscriptions, setSubscriptions] = useState<DashboardSubscription[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('All categories');
   const [selectedCurrency, setSelectedCurrency] = useState('All currencies');
   const [exchangeRates, setExchangeRates] = useState<Record<string, number> | null>(null);
-  const [exchangeRateError, setExchangeRateError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [lastSuccessfulSync, setLastSuccessfulSync] = useState<Date | null>(null);
@@ -149,7 +85,7 @@ export default function Dashboard() {
       const code = currency.toUpperCase();
       if (code === 'USD') return amount;
       const rate = exchangeRates?.[code];
-      if (!rate || !Number.isFinite(rate)) return null;
+      if (!rate || !Number.isFinite(rate)) return null; // Skip if rate unavailable
       return amount / rate;
     },
     [exchangeRates],
@@ -166,7 +102,6 @@ export default function Dashboard() {
           setLastSuccessfulSync(new Date());
         }
       } catch (err) {
-        console.error('Failed to load subscriptions:', err);
         if (mounted) setError('Unable to load subscriptions. Please refresh the page.');
       } finally {
         if (mounted) setLoading(false);
@@ -188,12 +123,8 @@ export default function Dashboard() {
         if (!response.ok) throw new Error('Exchange rate request failed');
         const result = await response.json();
         if (result.result !== 'success' || !result.rates) throw new Error('Exchange rates unavailable');
-        if (!cancelled) {
-          setExchangeRates(result.rates);
-          setExchangeRateError(false);
-        }
+        if (!cancelled) setExchangeRates(result.rates);
       } catch (error) {
-        if (!cancelled) setExchangeRateError(true);
         console.error('Could not load USD exchange rates:', error);
       }
     }
@@ -228,7 +159,6 @@ export default function Dashboard() {
 
   const displaySpend = baseMonthlySpend;
 
-  // 🌟 Dynamic Vibe text (Memoized so it doesn't change on every state render)
   const vibeText = useMemo(() => {
     if (displaySpend <= 0) return "";
     const vibe = VIBES[Math.floor(Math.random() * VIBES.length)];
@@ -267,16 +197,14 @@ export default function Dashboard() {
       ? Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])
       : [['No Data', 0]];
 
-  const maxCategorySpend = Math.max(...Object.values(categoryTotals), 1);
+  const totalCategorySpend = Object.values(categoryTotals).reduce((a, b) => a + b, 0) || 1;
 
   const multiLineChartData = useMemo(() => {
     if (filteredSubscriptions.length === 0) return [];
-
     const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth();
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    
     const topSubs = [...filteredSubscriptions]
       .sort((a, b) => {
         const aUSD = convertToUSD(getMonthlyAmount(a), a.currency) || 0;
@@ -292,16 +220,12 @@ export default function Dashboard() {
         fullDate: new Date(currentYear, currentMonth, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         _meta: {} 
       };
-
       topSubs.forEach((sub) => {
         const usdMonthly = convertToUSD(getMonthlyAmount(sub), sub.currency) || 0;
         const dailyRate = usdMonthly / daysInMonth;
-        const accumulated = dailyRate * day;
-        
-        dataPoint[sub.name] = Number(accumulated.toFixed(2));
+        dataPoint[sub.name] = Number((dailyRate * day).toFixed(2));
         dataPoint._meta[sub.name] = { daily: dailyRate };
       });
-
       return dataPoint;
     });
   }, [filteredSubscriptions, convertToUSD]);
@@ -327,26 +251,43 @@ export default function Dashboard() {
       .slice(0, 5);
   }, [filteredSubscriptions, convertToUSD]);
 
+  const subToRate = filteredSubscriptions.find(s => s.isWorthIt === null || s.isWorthIt === undefined);
+
+  const handleRate = async (id: string, isWorthIt: boolean) => {
+    try {
+      await api.rateSubscription(id, isWorthIt);
+      setSubscriptions(prev => prev.map(s => s.id === id ? { ...s, isWorthIt } : s));
+    } catch (error) {
+      console.error('Failed to rate subscription:', error);
+    }
+  };
+
+  const handleCancelFlow = () => navigate('/subscriptions');
+
   return (
-    <main className="min-h-screen bg-bg-primary p-4 text-text-primary sm:p-6 lg:p-8">
+    // 🔥 Spacing Fix: Reduced top padding (pt-2) so it doesn't look awkwardly empty
+    <main className="min-h-screen bg-bg-primary px-4 pt-2 pb-8 text-text-primary sm:px-6 sm:pt-4 lg:px-8 lg:pt-6 transition-colors duration-300">
       <div className="mx-auto w-full max-w-[1600px] space-y-7">
         
-        {/* PAGE HEADER */}
-        <header className="flex flex-col justify-between gap-5 xl:flex-row xl:items-end">
-          <div>
-            <div className="mb-3 flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${error ? 'bg-rose-500' : loading ? 'animate-pulse bg-amber-500' : 'bg-emerald-500'}`} />
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-text-secondary">
-                Subscription overview
-              </span>
+        {/* 🌟 COMPACT & BALANCED HEADER 🌟 */}
+        <header className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
+          <div className="flex items-center gap-3.5">
+            
+            {/* Smaller Icon Box */}
+            <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl">
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/40 to-transparent dark:from-white/10 dark:to-transparent border border-white/50 dark:border-white/10 shadow-sm backdrop-blur-sm" />
+              <span className="relative z-10 text-2xl drop-shadow-md">🏠</span>
             </div>
-            <h1 className="text-3xl font-black tracking-[-0.05em] sm:text-4xl lg:text-5xl">
-              <TextScramble text="Your money," />
-              <TextScramble text="in perspective." className="ml-2 text-violet-500" />
-            </h1>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-text-secondary">
-              See what you spend, renews, where money goes.
-            </p>
+
+            {/* Perfectly Aligned Text Container */}
+            <div className="flex flex-col justify-center">
+              <h1 className="text-2xl font-black tracking-tight text-text-primary sm:text-3xl leading-tight">
+                Dashboard<span className="text-violet-500">.</span>
+              </h1>
+              <p className="mt-1 text-xs sm:text-sm leading-tight text-text-secondary font-medium">
+                Your financial overview
+              </p>
+            </div>
           </div>
         </header>
 
@@ -388,9 +329,8 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* TOP ROW: MAIN CARD & CATEGORIES CARD */}
         <section className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-          
+          {/* MAIN CARD */}
           <article className="relative isolate min-h-[310px] overflow-hidden rounded-[28px] bg-gradient-to-br from-[#17132f] via-[#282052] to-[#45258c] p-6 text-white shadow-xl shadow-violet-950/10 sm:p-8 lg:col-span-7 lg:p-10">
             <div className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full border border-white/10" />
             <div className="pointer-events-none absolute -right-6 -top-10 h-52 w-52 rounded-full border border-white/10" />
@@ -401,7 +341,9 @@ export default function Dashboard() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="mb-4 flex items-center gap-2">
-                    <span className="rounded-lg border border-white/15 bg-white/10 p-2"><Wallet size={18} /></span>
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-lg shadow-sm">
+                      💳
+                    </span>
                     <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-violet-100/80">
                       Monthly Commitment
                     </span>
@@ -428,7 +370,6 @@ export default function Dashboard() {
                   <span className="text-sm font-medium text-white/50">/ month</span>
                 </div>
 
-                {/* 🌟 ANIMATED COMPARISON BOX WITH AUTO-SHINE 🌟 */}
                 {!loading && displaySpend > 0 && vibeText && (
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }}
@@ -437,26 +378,16 @@ export default function Dashboard() {
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
                     className="group relative mt-6 flex w-fit items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] px-5 py-3 shadow-lg backdrop-blur-md cursor-default"
                   >
-                    {/* Auto Shine Light - Har 2 second baad chalega */}
                     <motion.div 
                       initial={{ x: '-100%' }}
                       animate={{ x: '200%' }}
-                      transition={{ 
-                        repeat: Infinity, 
-                        duration: 1.2, 
-                        repeatDelay: 0.8, // 1.2s + 0.8s = 2s total
-                        ease: "easeInOut" 
-                      }}
+                      transition={{ repeat: Infinity, duration: 1.2, repeatDelay: 0.8, ease: "easeInOut" }}
                       className="absolute top-0 bottom-0 w-1/2 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 pointer-events-none"
                     />
-                    
-                    {/* Glowing Sparkle Icon */}
                     <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20">
                       <div className="absolute inset-0 rounded-full bg-violet-500/40 blur-md animate-pulse" />
-                      <Sparkles className="relative z-10 h-4 w-4 text-violet-300" />
+                      <span className="relative z-10 text-sm">💸</span>
                     </div>
-
-                    {/* Text Content */}
                     <p className="relative z-10 text-sm font-medium text-white/80">
                       That's like buying{" "}
                       <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent font-bold text-base tracking-wide">
@@ -482,25 +413,71 @@ export default function Dashboard() {
             </div>
           </article>
 
+          {/* SPEND BY CATEGORY */}
           <article className="rounded-[28px] border border-border bg-bg-elevated p-6 sm:p-8 lg:col-span-5 flex flex-col relative overflow-hidden">
             <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-violet-500/10 blur-3xl" />
-            
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-violet-500/10 p-2.5 text-violet-500">
-                  <PieIcon size={20} />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-xl shadow-inner">
+                  📊
                 </div>
                 <div>
-                  <h2 className="text-lg font-black tracking-tight">Spend by Category</h2>
+                  <h2 className="text-lg font-black tracking-tight text-text-primary">Spend by Category</h2>
                   <p className="text-[11px] font-medium text-text-secondary mt-0.5">Where your money goes</p>
                 </div>
               </div>
             </div>
 
+            {/* MERGED WORTH IT CHECK-IN */}
+            <AnimatePresence>
+              {!loading && subToRate && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, height: 'auto', scale: 1 }}
+                  exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                  className="mb-6 overflow-hidden"
+                >
+                  <div className="relative rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/5 to-fuchsia-500/5 p-4 shadow-sm dark:from-violet-500/10 dark:to-fuchsia-500/10">
+                    <button onClick={handleCancelFlow} className="absolute top-3 right-3 text-text-muted hover:text-text-primary">
+                      <X size={14} />
+                    </button>
+                    
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-xl shadow-inner">
+                        🤔
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-text-primary">Worth It Check-in</h3>
+                        <p className="text-[10px] text-text-secondary leading-tight mt-0.5">
+                          You paid {formatMoney(Number(subToRate.price) || 0, subToRate.currency || 'USD')} for {subToRate.name}. Did you use it enough?
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 mt-4">
+                      <button 
+                        onClick={() => handleRate(subToRate.id, true)}
+                        className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-600 transition-all hover:bg-emerald-500/20 dark:text-emerald-400"
+                      >
+                        <ThumbsUp size={14} /> Yes, loved it
+                      </button>
+                      <button 
+                        onClick={() => handleRate(subToRate.id, false)}
+                        className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-600 transition-all hover:bg-rose-500/20 dark:text-rose-400"
+                      >
+                        <ThumbsDown size={14} /> Not really
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div className="flex-1 flex flex-col justify-center space-y-6">
               {categoriesData.map(([category, amount], index) => {
                 const numericAmount = Number(amount) || 0;
-                const percent = numericAmount > 0 ? (numericAmount / maxCategorySpend) * 100 : 0;
+                const percentOfTotal = numericAmount > 0 ? (numericAmount / totalCategorySpend) * 100 : 0;
+                
                 const color = categoryColors[index % categoryColors.length];
 
                 return (
@@ -513,14 +490,26 @@ export default function Dashboard() {
                       <div className="text-right flex items-center gap-3">
                         <span className={`text-sm font-black ${color.text}`}>{formatMoney(numericAmount, displayCurrency)}</span>
                         <span className="text-[10px] font-bold text-text-muted bg-bg-surface px-2 py-0.5 rounded-md border border-border/50">
-                          {percent.toFixed(0)}%
+                          {percentOfTotal.toFixed(0)}%
                         </span>
                       </div>
                     </div>
-                    <div className="h-2.5 w-full bg-bg-surface rounded-full overflow-hidden shadow-inner">
-                      <div
-                        className={`h-full rounded-full bg-gradient-to-r ${color.bar} shadow-[0_0_10px] ${color.shadow} transition-all duration-1000 ease-out`}
-                        style={{ width: `${percent}%` }}
+                    
+                    <div className="relative w-full h-1.5 mt-2 bg-bg-surface rounded-full overflow-hidden">
+                      <div 
+                        className={`absolute top-0 left-0 h-full rounded-full bg-gradient-to-r ${color.bar} opacity-20`}
+                        style={{ width: `${percentOfTotal}%` }}
+                      />
+                      <motion.div
+                        className={`absolute top-0 bottom-0 w-1/3 rounded-full bg-gradient-to-r ${color.bar} shadow-[0_0_10px] ${color.shadow}`}
+                        initial={{ left: '-33%' }}
+                        animate={{ left: '100%' }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          repeatDelay: 3.5,
+                          ease: "easeInOut"
+                        }}
                       />
                     </div>
                   </div>
@@ -531,37 +520,29 @@ export default function Dashboard() {
               )}
             </div>
           </article>
-
         </section>
 
-        {/* FULL WIDTH: DYNAMIC CHART */}
         <section className="rounded-[28px] border border-border bg-bg-elevated p-6 sm:p-8 relative overflow-hidden">
           <div className="pointer-events-none absolute top-0 right-0 h-64 w-64 bg-violet-500/5 blur-3xl rounded-bl-full" />
-          
           <div className="relative flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="rounded-lg bg-violet-500/10 p-1.5 text-violet-500"><Activity size={16} /></span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">
-                  Per-Day Spending Flow
+              <div className="flex items-center gap-3 mb-2">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-500/10 text-2xl shadow-sm border border-violet-500/10">
+                  📈
                 </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Per-Day Spending Flow</span>
               </div>
-              <h2 className="text-2xl font-black tracking-tight">
-                Cumulative Spend per Subscription
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-text-primary mt-1">
+                Cumulative Spend
               </h2>
-              <p className="text-sm text-text-secondary mt-1">
-                See how much value each service generates day by day this month.
+              <p className="text-xs sm:text-sm text-text-secondary mt-1">
+                Daily value generated by your services.
               </p>
             </div>
-            
             <div className="flex items-center gap-4 rounded-2xl border border-violet-500/20 bg-violet-500/5 px-5 py-3 shadow-sm w-fit">
               <div className="flex flex-col">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">
-                  Month-to-Date Spend
-                </span>
-                <span className="text-xl font-black text-violet-500">
-                  {loading || baseMonthlySpend === 0 ? '...' : formatMoney(currentDayBurn, displayCurrency)}
-                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Month-to-Date Spend</span>
+                <span className="text-xl font-black text-violet-500">{loading || baseMonthlySpend === 0 ? '...' : formatMoney(currentDayBurn, displayCurrency)}</span>
               </div>
             </div>
           </div>
@@ -572,41 +553,23 @@ export default function Dashboard() {
             ) : baseMonthlySpend === 0 ? (
               <div className="flex h-full items-center justify-center text-sm text-text-muted">No spending data yet.</div>
             ) : (
-              
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={multiLineChartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis 
-                    dataKey="day" 
-                    tick={{ fontSize: 11, fill: 'var(--text-secondary)', fontWeight: 600 }} 
-                    axisLine={false} 
-                    tickLine={false} 
-                    interval="preserveStartEnd"
-                    tickMargin={10}
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 11, fill: 'var(--text-secondary)', fontWeight: 600 }} 
-                    tickFormatter={(val) => `$${val}`} 
-                    axisLine={false} 
-                    tickLine={false} 
-                    width={60} 
-                  />
+                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--text-secondary)', fontWeight: 600 }} axisLine={false} tickLine={false} interval="preserveStartEnd" tickMargin={10} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-secondary)', fontWeight: 600 }} tickFormatter={(val) => `$${val}`} axisLine={false} tickLine={false} width={60} />
                   <Tooltip
                     content={({ active, payload, label }) => {
                       if (active && payload && payload.length) {
                         const activeEntries = payload.filter((e: any) => Number(e.value) > 0);
                         const total = activeEntries.reduce((sum, entry) => sum + (Number(entry.value) || 0), 0);
-
                         return (
                           <div className="rounded-xl border border-white/10 bg-[rgba(20,20,30,0.95)] p-4 shadow-xl backdrop-blur-md min-w-[240px]">
-                            <p className="mb-3 text-xs font-bold text-violet-300">
-                              {multiLineChartData[Number(label) - 1]?.fullDate}
-                            </p>
+                            <p className="mb-3 text-xs font-bold text-violet-300">{multiLineChartData[Number(label) - 1]?.fullDate}</p>
                             <div className="space-y-3">
                               {payload.sort((a: any,b: any) => Number(b.value) - Number(a.value)).map((entry: any) => {
                                 const dailyCost = entry.payload._meta?.[entry.name]?.daily || 0;
                                 const accumulated = Number(entry.value);
-
                                 return (
                                   <div key={entry.name} className="flex flex-col gap-1 text-xs">
                                     <div className="flex items-center justify-between gap-4">
@@ -634,31 +597,20 @@ export default function Dashboard() {
                       return null;
                     }}
                   />
-                  
                   {topSubsForChart.map((sub, idx) => (
-                    <Line
-                      key={sub.id}
-                      type="monotone" 
-                      dataKey={sub.name}
-                      stroke={lineColors[idx % lineColors.length]}
-                      strokeWidth={3}
-                      dot={false}
-                      activeDot={{ r: 6, fill: 'white', stroke: lineColors[idx % lineColors.length], strokeWidth: 3 }}
-                    />
+                    <Line key={sub.id} type="monotone" dataKey={sub.name} stroke={lineColors[idx % lineColors.length]} strokeWidth={3} dot={false} activeDot={{ r: 6, fill: 'white', stroke: lineColors[idx % lineColors.length], strokeWidth: 3 }} />
                   ))}
                 </LineChart>
               </ResponsiveContainer>
-
             )}
           </div>
         </section>
 
-        {/* BOTTOM: RENEWAL SCHEDULE */}
         <section className="rounded-[28px] border border-border bg-bg-elevated overflow-hidden shadow-sm">
           <div className="flex flex-col justify-between gap-5 border-b border-border p-6 sm:flex-row sm:items-center sm:p-8 bg-gradient-to-r from-bg-elevated via-bg-elevated to-amber-500/5">
             <div className="flex items-start gap-4">
-              <div className="rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 p-3 shadow-lg shadow-amber-500/20 text-white">
-                <Clock3 size={24} />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-2xl shadow-lg shadow-amber-500/20">
+                ⏰
               </div>
               <div>
                 <h2 className="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary">
@@ -683,7 +635,7 @@ export default function Dashboard() {
           ) : dueSoonList.length === 0 ? (
             <div className="flex flex-col items-center px-6 py-12 text-center">
               <div className="mb-4 rounded-2xl bg-emerald-500/10 p-4 text-emerald-500"><CheckCircle2 size={30} /></div>
-              <h3 className="text-base font-extrabold">You're all caught up</h3>
+              <h3 className="text-base font-extrabold text-text-primary">You're all caught up</h3>
               <p className="mt-2 max-w-sm text-sm leading-6 text-text-secondary">No upcoming renewals in the next 30 days. Any new renewal dates will appear here automatically.</p>
             </div>
           ) : (
@@ -696,16 +648,8 @@ export default function Dashboard() {
                 const isSoon = days <= 7;
 
                 return (
-                  <article
-                    key={sub.id}
-                    className={`group relative flex flex-col overflow-hidden rounded-3xl border bg-bg-surface p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl flex-1 min-w-[300px] lg:min-w-[320px] ${
-                      isUrgent ? 'border-rose-500/30 hover:shadow-rose-500/10' : isSoon ? 'border-amber-500/30 hover:shadow-amber-500/10' : 'border-border/60 hover:border-violet-500/40 hover:shadow-violet-500/10'
-                    }`}
-                  >
-                    <div className={`pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full blur-3xl transition-transform duration-500 group-hover:scale-125 ${
-                      isUrgent ? 'bg-rose-500/10' : isSoon ? 'bg-amber-500/10' : 'bg-violet-500/10'
-                    }`} />
-
+                  <article key={sub.id} className={`group relative flex flex-col overflow-hidden rounded-3xl border bg-bg-surface p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl flex-1 min-w-[300px] lg:min-w-[320px] ${isUrgent ? 'border-rose-500/30 hover:shadow-rose-500/10' : isSoon ? 'border-amber-500/30 hover:shadow-amber-500/10' : 'border-border/60 hover:border-violet-500/40 hover:shadow-violet-500/10'}`}>
+                    <div className={`pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full blur-3xl transition-transform duration-500 group-hover:scale-125 ${isUrgent ? 'bg-rose-500/10' : isSoon ? 'bg-amber-500/10' : 'bg-violet-500/10'}`} />
                     <div className="relative flex items-start justify-between mb-6">
                       <div className="flex items-center gap-4">
                         <div className="relative">
@@ -722,7 +666,6 @@ export default function Dashboard() {
                         <p className="text-[10px] font-bold text-text-muted mt-1 flex items-center justify-end gap-1"><CreditCard size={12} /> Auto-pay</p>
                       </div>
                     </div>
-
                     <div className="relative flex items-center justify-between mb-3 mt-auto pt-4 border-t border-border/50">
                        <div className="flex flex-col">
                           <span className={`text-[11px] font-black uppercase tracking-widest ${isUrgent ? 'text-rose-500' : isSoon ? 'text-amber-500' : 'text-emerald-500'}`}>
@@ -733,46 +676,20 @@ export default function Dashboard() {
                           </span>
                        </div>
                     </div>
-
                     <div className="relative mt-2">
                       <div className="relative h-2.5 w-full bg-bg-hover rounded-full overflow-hidden border border-border/40 shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]">
-                        <div
-                          className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ease-out ${
-                            isUrgent ? 'bg-gradient-to-r from-rose-600 to-rose-400' 
-                            : isSoon ? 'bg-gradient-to-r from-amber-500 to-orange-400' 
-                            : 'bg-gradient-to-r from-emerald-500 to-teal-400'
-                          }`}
-                          style={{ width: `${progressPercent}%` }}
-                        >
+                        <div className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ease-out ${isUrgent ? 'bg-gradient-to-r from-rose-600 to-rose-400' : isSoon ? 'bg-gradient-to-r from-amber-500 to-orange-400' : 'bg-gradient-to-r from-emerald-500 to-teal-400'}`} style={{ width: `${progressPercent}%` }}>
                           <div className="absolute inset-0 bg-white/20 h-[1px] rounded-t-full" />
                         </div>
-                        
-                        <div 
-                          className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-[1.5px] border-white shadow-md transition-all duration-1000 ease-out z-10 ${
-                            isUrgent ? 'bg-rose-500 shadow-[0_0_8px_rgba(225,29,72,0.6)]' 
-                            : isSoon ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]' 
-                            : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'
-                          }`}
-                          style={{ left: `calc(${progressPercent}% - 6px)` }}
-                        />
+                        <div className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-[1.5px] border-white shadow-md transition-all duration-1000 ease-out z-10 ${isUrgent ? 'bg-rose-500 shadow-[0_0_8px_rgba(225,29,72,0.6)]' : isSoon ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'}`} style={{ left: `calc(${progressPercent}% - 6px)` }} />
                       </div>
                     </div>
-
                   </article>
                 );
               })}
             </div>
           )}
         </section>
-
-        {/* FOOTER */}
-        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border py-5">
-          <p className="text-[10px] font-medium text-text-secondary">Subscription Graveyard · Financial overview</p>
-          <p className="flex items-center gap-1.5 text-[10px] font-medium text-text-secondary">
-            <span className={`h-1.5 w-1.5 rounded-full ${error ? 'bg-rose-500' : loading ? 'animate-pulse bg-amber-500' : 'bg-emerald-500'}`} />
-            {error ? 'Subscription data unavailable' : loading ? 'Connecting to subscription data' : lastSuccessfulSync ? `Last synced ${lastSuccessfulSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Waiting for subscription data'}
-          </p>
-        </footer>
       </div>
     </main>
   );

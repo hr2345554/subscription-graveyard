@@ -18,13 +18,13 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  updateProfile: (newName: string) => Promise<void>; // 🌟 Naya function
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 function loadStoredUser(): User | null {
   try {
-    // sessionStorage use ho raha hai
     const token = sessionStorage.getItem('sub_graveyard_token');
     const stored = sessionStorage.getItem('sub_graveyard_user');
 
@@ -49,23 +49,36 @@ export function AuthProvider({
   }, []);
 
   const signup = useCallback(async (email: string, password: string) => {
-    // 1. Backend par account create karo
     await apiSignup(email, password);
-    
-    // 🚨 FIX: setUser(authenticatedUser) ko hata diya hai taake auto-login na ho.
-    
-    // 2. Agar API internally sessionStorage mein token save kar rahi hai, 
-    // toh usko clear kar do taake user signup ke baad automatically login na ho.
     sessionStorage.removeItem('sub_graveyard_token');
     sessionStorage.removeItem('sub_graveyard_user');
   }, []);
 
   const logout = useCallback(() => {
     apiLogout();
-    // Session clear karo
     sessionStorage.removeItem('sub_graveyard_token');
     sessionStorage.removeItem('sub_graveyard_user');
     setUser(null);
+  }, []);
+
+  // 🌟 Naya Function: Update Profile
+  const updateProfile = useCallback(async (newName: string) => {
+    // Yahan aap apni backend API call laga sakte hain
+    // await api.updateProfile({ name: newName });
+    
+    // Simulate API delay
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    setUser((prevUser) => {
+      if (!prevUser) return null;
+      
+      const updatedUser = { ...prevUser, name: newName };
+      
+      // Session storage mein bhi update karein taake refresh par na jaye
+      sessionStorage.setItem('sub_graveyard_user', JSON.stringify(updatedUser));
+      
+      return updatedUser;
+    });
   }, []);
 
   return (
@@ -77,6 +90,7 @@ export function AuthProvider({
         login,
         signup,
         logout,
+        updateProfile, // 🌟 Add kiya
       }}
     >
       {children}

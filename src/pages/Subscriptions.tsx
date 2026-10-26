@@ -25,13 +25,14 @@ import {
   getDaysUntilRenewal,
   getCategoryLabel,
 } from '../utils/calculations';
-import { Plus, Search, RefreshCw, ChevronDown, X, Calendar, Tag, CreditCard, Repeat, Trash2, Ban } from 'lucide-react';
+import { Plus, Search, RefreshCw, ChevronDown, X, Calendar, Tag, Repeat, Trash2, Ban, Users, Pencil, CheckCircle2 } from 'lucide-react';
 import { SubscriptionLogo } from '../components/ui/SubscriptionLogo';
+import { SplitModal } from '../components/SplitModal'; 
 
 // ==========================================
-// 3D TILT CARD COMPONENT
+// 3D TILT CARD COMPONENT (Subtle Version)
 // ==========================================
-const TiltCard = ({ children, onClick }: { children: ReactNode, onClick?: () => void }) => {
+const TiltCard = ({ children, onClick, isSelectable }: { children: ReactNode, onClick?: () => void, isSelectable?: boolean }) => {
   const ref = useRef<HTMLDivElement>(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -39,8 +40,8 @@ const TiltCard = ({ children, onClick }: { children: ReactNode, onClick?: () => 
   const mouseXSpring = useSpring(x, { stiffness: 300, damping: 25 });
   const mouseYSpring = useSpring(y, { stiffness: 300, damping: 25 });
 
-  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["4deg", "-4deg"]);
-  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-4deg", "4deg"]);
+  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["1deg", "-1deg"]);
+  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-1deg", "1deg"]);
 
   const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
     if (!ref.current) return;
@@ -67,7 +68,7 @@ const TiltCard = ({ children, onClick }: { children: ReactNode, onClick?: () => 
       onMouseLeave={handleMouseLeave}
       onClick={onClick}
       style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-      className="w-full h-full cursor-pointer"
+      className={`w-full h-full ${isSelectable ? 'cursor-pointer' : 'cursor-default'}`}
     >
       {children}
     </motion.div>
@@ -112,20 +113,6 @@ const frequencies: { value: BillingFrequency; label: string }[] = [
   { value: 'yearly', label: 'Yearly' },
 ];
 
-// Animation Variants for Modal Content
-const modalContentVariants = {
-  hidden: { opacity: 0 },
-  visible: { 
-    opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 }
-  }
-};
-
-const modalItemVariants = {
-  hidden: { opacity: 0, y: 15 },
-  visible: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } }
-};
-
 export function Subscriptions() {
   const [subs, setSubs] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,10 +122,13 @@ export function Subscriptions() {
   const [filterStatus, setFilterStatus] = useState('active'); 
   
   const [showAdd, setShowAdd] = useState(false);
+  const [showEdit, setShowEdit] = useState<Subscription | null>(null);
   const [showCancel, setShowCancel] = useState<Subscription | null>(null);
-  const [showDelete, setShowDelete] = useState<Subscription | null>(null);
-  
-  const [selectedSub, setSelectedSub] = useState<Subscription | null>(null);
+  const [showSplit, setShowSplit] = useState<Subscription | null>(null); 
+
+  // Delete Mode States
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
+  const [selectedSubs, setSelectedSubs] = useState<string[]>([]);
 
   const loadSubscriptions = useCallback(async () => {
     setLoading(true);
@@ -158,6 +148,11 @@ export function Subscriptions() {
     void loadSubscriptions();
   }, [loadSubscriptions]);
 
+  // Clear selection if search or filter changes
+  useEffect(() => {
+    setSelectedSubs([]);
+  }, [search, filterStatus]);
+
   const filtered = subs.filter((sub) => {
     if (filterStatus !== 'all' && sub.status !== filterStatus) {
       return false;
@@ -176,6 +171,18 @@ export function Subscriptions() {
     }
   };
 
+  const handleEdit = async (data: SubscriptionFormData) => {
+    if (!showEdit) return;
+    try {
+      await api.updateSubscription(showEdit.id, data);
+      await loadSubscriptions();
+      showToast('success', 'Subscription updated successfully');
+      setShowEdit(null);
+    } catch {
+      showToast('error', 'Could not update subscription. Please try again.');
+    }
+  };
+
   const handleCancel = async (data: CancelFormData) => {
     if (!showCancel) return;
 
@@ -183,7 +190,7 @@ export function Subscriptions() {
       await api.cancelSubscription(
         showCancel.id,
         data.cancellationDate,
-        data.cancellationReason,
+        data.cancellationReason || '',
       );
 
       await loadSubscriptions();
@@ -194,17 +201,48 @@ export function Subscriptions() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!showDelete) return;
-
+  const handleSplit = async (id: string, sharedWith: { email: string; amountOwed: number; hasPaid: boolean }[]) => {
     try {
-      await api.deleteSubscription(showDelete.id);
+      await api.splitSubscription(id, sharedWith);
       await loadSubscriptions();
-      showToast('success', 'Subscription permanently deleted');
-      setShowDelete(null);
+      showToast('success', 'Subscription shared successfully');
+      setShowSplit(null);
     } catch {
-      showToast('error', 'Could not delete this subscription. Please try again.');
+      showToast('error', 'Could not share this subscription. Please try again.');
     }
+  };
+
+  // --- Bulk Delete Logic ---
+  const toggleSelectSub = (id: string) => {
+    setSelectedSubs((prev) =>
+      prev.includes(id) ? prev.filter((subId) => subId !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedSubs.length === filtered.length) {
+      setSelectedSubs([]);
+    } else {
+      setSelectedSubs(filtered.map((s) => s.id));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedSubs.length === 0) return;
+    try {
+      await Promise.all(selectedSubs.map((id) => api.deleteSubscription(id)));
+      await loadSubscriptions();
+      showToast('success', `${selectedSubs.length} subscription(s) deleted permanently`);
+      setIsDeleteMode(false);
+      setSelectedSubs([]);
+    } catch {
+      showToast('error', 'Could not delete subscriptions. Please try again.');
+    }
+  };
+
+  const exitDeleteMode = () => {
+    setIsDeleteMode(false);
+    setSelectedSubs([]);
   };
 
   return (
@@ -217,20 +255,29 @@ export function Subscriptions() {
         className="flex flex-col gap-6"
       >
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight text-text-primary mb-1">
-              Subscriptions<span className="text-violet-500">.</span>
-            </h1>
-            <p className="text-sm text-text-secondary">
-              Manage your digital ecosystem in one place
-            </p>
+          
+          {/* 🌟 COMPACT HEADER (Balanced & Sleek) 🌟 */}
+          <div className="flex items-center gap-3.5">
+            <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl">
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/40 to-transparent dark:from-white/10 dark:to-transparent border border-white/50 dark:border-white/10 shadow-sm backdrop-blur-sm" />
+              <span className="relative z-10 text-2xl drop-shadow-md">💳</span>
+            </div>
+            <div className="flex flex-col justify-center">
+              <h1 className="text-2xl font-black tracking-tight text-text-primary sm:text-3xl leading-tight">
+                Subscriptions<span className="text-violet-500">.</span>
+              </h1>
+              <p className="mt-1 text-xs sm:text-sm leading-tight text-text-secondary font-medium">
+                Manage your digital ecosystem in one place
+              </p>
+            </div>
           </div>
 
+          {/* SIZED DOWN ADD BUTTON */}
           <Button
             variant="glow"
             icon={<Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />}
             onClick={() => setShowAdd(true)}
-            className="group relative overflow-hidden rounded-2xl px-6 py-6 text-sm font-bold shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 transition-all duration-300"
+            className="group relative overflow-hidden rounded-xl px-5 py-2.5 h-11 text-sm font-bold shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 transition-all duration-300"
           >
             <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-[shimmer_1.5s_infinite]" />
             Add Subscription
@@ -271,35 +318,77 @@ export function Subscriptions() {
           </div>
         </div>
         
+        {/* 🌟 RESULTS BAR & BULK ACTIONS WITH VISIBLE DIVIDER LINE 🌟 */}
         {(!loading && !error) && (
-          <div className="flex items-center justify-between px-1">
-            <p className="text-xs font-semibold text-text-secondary">
-              Showing <span className="text-text-primary">{filtered.length}</span> {filtered.length === 1 ? 'result' : 'results'}
-            </p>
-            {(search || filterStatus !== 'active') && (
-              <button
-                type="button"
-                onClick={() => { setSearch(''); setFilterStatus('active'); }}
-                className="text-xs font-bold text-violet-500 transition-colors hover:text-fuchsia-500 flex items-center gap-1"
-              >
-                Clear filters <X className="w-3 h-3" />
-              </button>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-1 pb-5 mb-2 border-b-2 border-border/80 transition-all">
+            {isDeleteMode ? (
+              <>
+                <p className="text-sm font-bold text-rose-500 flex items-center gap-2">
+                  <Trash2 size={16} /> {selectedSubs.length} selected
+                </p>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                  
+                  <button 
+                    onClick={toggleSelectAll} 
+                    className="h-9 px-4 rounded-xl border border-border/60 bg-bg-surface text-xs font-bold text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-all"
+                  >
+                    {selectedSubs.length === filtered.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                  
+                  <button 
+                    onClick={exitDeleteMode} 
+                    className="h-9 px-4 rounded-xl border border-border/60 bg-bg-surface text-xs font-bold text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-all"
+                  >
+                    Cancel
+                  </button>
+                  
+                  <Button 
+                    variant="glow" 
+                    onClick={handleBulkDelete} 
+                    disabled={selectedSubs.length === 0} 
+                    className="h-9 px-4 text-xs bg-rose-500 hover:bg-rose-600 border-none shadow-rose-500/20 hover:shadow-rose-500/40 disabled:opacity-50"
+                  >
+                    Delete Selected ({selectedSubs.length})
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-semibold text-text-secondary">
+                  Showing <span className="text-text-primary">{filtered.length}</span> {filtered.length === 1 ? 'result' : 'results'}
+                </p>
+                <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                  {(search || filterStatus !== 'active') && (
+                    <button
+                      type="button"
+                      onClick={() => { setSearch(''); setFilterStatus('active'); }}
+                      className="text-xs font-bold text-violet-500 transition-colors hover:text-fuchsia-500 flex items-center gap-1"
+                    >
+                      Clear filters <X className="w-3 h-3" />
+                    </button>
+                  )}
+                  
+                  {filtered.length > 0 && (
+                    <button
+                      onClick={() => setIsDeleteMode(true)}
+                      className="group relative flex items-center gap-2 rounded-xl bg-rose-500/10 px-4 py-2 text-xs font-bold text-rose-500 transition-all duration-300 hover:bg-rose-500 hover:text-white hover:shadow-[0_0_20px_rgba(244,63,94,0.4)] border border-rose-500/20 hover:border-rose-500"
+                    >
+                      <Trash2 size={14} className="transition-transform group-hover:scale-110 group-hover:-rotate-12" />
+                      Delete Subscriptions
+                    </button>
+                  )}
+                </div>
+              </>
             )}
           </div>
         )}
       </motion.div>
 
-      {/* Subscription list */}
+      {/* Loading Skeleton */}
       {loading && (
-        <div className="space-y-3" aria-busy="true">
+        <div className="flex flex-col gap-4">
           {[1, 2, 3].map((item) => (
-            <div key={item} className="glass-card flex items-center gap-4 p-4">
-              <div className="h-12 w-12 shrink-0 animate-pulse rounded-xl bg-bg-hover" />
-              <div className="min-w-0 flex-1 space-y-2">
-                <div className="h-4 w-32 max-w-full animate-pulse rounded bg-bg-hover" />
-                <div className="h-3 w-24 max-w-full animate-pulse rounded bg-bg-hover" />
-              </div>
-            </div>
+            <div key={item} className="h-24 rounded-[24px] bg-bg-hover animate-pulse" />
           ))}
         </div>
       )}
@@ -316,272 +405,198 @@ export function Subscriptions() {
         </div>
       )}
 
+      {/* 🌟 PREMIUM HORIZONTAL LAYOUT (Flex List) 🌟 */}
       {!loading && !error && (
-        <div className="space-y-3" style={{ perspective: 1000 }}>
+        <div className="flex flex-col gap-5">
           <AnimatePresence mode="popLayout">
-            {filtered.map((sub, index) => (
-              <motion.div
-                key={sub.id}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.97 }}
-                transition={{ delay: Math.min(index * 0.03, 0.18), duration: 0.22 }}
-              >
-                <TiltCard onClick={() => setSelectedSub(sub)}>
-                  <Card
-                    hover
-                    className="flex flex-col gap-4 p-4 transition-colors duration-300 sm:flex-row sm:items-center shadow-sm hover:shadow-md"
+            {filtered.map((sub, index) => {
+              const isSelected = selectedSubs.includes(sub.id);
+              return (
+                <motion.div
+                  key={sub.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ delay: Math.min(index * 0.05, 0.2), duration: 0.3 }}
+                  className="w-full"
+                >
+                  <TiltCard 
+                    onClick={() => isDeleteMode && toggleSelectSub(sub.id)}
+                    isSelectable={isDeleteMode}
                   >
-                    <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <div style={{ transform: "translateZ(40px)" }} className="shrink-0">
-                        <SubscriptionLogo
-                          name={sub.name}
-                          websiteUrl={sub.websiteUrl}
-                          category={sub.category}
-                          className="h-12 w-12 rounded-xl shadow-lg"
-                        />
-                      </div>
+                    <div className={`group relative flex flex-col xl:flex-row w-full bg-bg-surface border shadow-sm transition-all duration-300 rounded-[24px] overflow-hidden ${
+                      isSelected 
+                        ? 'border-rose-500 ring-2 ring-rose-500/20 shadow-rose-500/10' 
+                        : 'border-border/60 hover:shadow-xl hover:border-violet-500/30'
+                    }`}>
+                      
+                      {/* Selection Checkbox Overlay */}
+                      {isDeleteMode && (
+                        <div className="absolute top-1/2 -translate-y-1/2 left-5 z-20">
+                          <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${
+                            isSelected ? 'bg-rose-500 border-rose-500 text-white' : 'border-border bg-bg-surface/80 backdrop-blur-sm'
+                          }`}>
+                            {isSelected && <CheckCircle2 size={14} />}
+                          </div>
+                        </div>
+                      )}
 
-                      <div className="min-w-0 flex-1" style={{ transform: "translateZ(20px)" }}>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="truncate font-semibold text-text-primary text-lg">
+                      {/* 1. IDENTITY SECTION (Logo, Name) */}
+                      <div className={`flex-1 p-5 flex items-center gap-4 relative transition-opacity min-w-0 ${isDeleteMode ? 'pl-14' : 'pl-5'}`}>
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+
+                        <div className="shrink-0">
+                          <SubscriptionLogo
+                            name={sub.name}
+                            websiteUrl={sub.websiteUrl}
+                            category={sub.category}
+                            className="h-12 w-12 rounded-xl"
+                          />
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-lg leading-tight line-clamp-1 text-text-primary">
                             {sub.name}
                           </h3>
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium capitalize ${
-                            sub.status === 'active' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
-                          }`}>
-                            {sub.status}
-                          </span>
+                          <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mt-0.5">
+                            {getCategoryLabel(sub.category)}
+                          </p>
                         </div>
 
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <span className="text-xs text-text-secondary">{getCategoryLabel(sub.category)}</span>
-                          <span className="text-xs text-text-muted" aria-hidden="true">•</span>
-                          <span className="text-xs capitalize text-text-secondary">{sub.billingFrequency}</span>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          {(sub as any).isShared && (
+                            <span className="flex items-center gap-1 text-[10px] font-bold text-violet-500 bg-violet-500/10 px-2 py-0.5 rounded-md">
+                              <Users size={12} /> Shared
+                            </span>
+                          )}
                         </div>
                       </div>
-                    </div>
 
-                    <div 
-                      className="flex items-center justify-between gap-3 border-t border-border pt-3 sm:border-0 sm:pt-0"
-                      style={{ transform: "translateZ(30px)" }}
-                    >
-                      <div className="sm:text-right">
-                        <p className="font-bold text-text-primary text-lg">
-                          {formatCurrency(sub.price, sub.currency)}
-                        </p>
-                        <p className="mt-1 text-xs text-text-secondary font-medium">
-                          {sub.status === 'active'
-                            ? `${getDaysUntilRenewal(sub.renewalDate)} days to renew`
-                            : sub.cancellationDate ? `Cancelled ${formatDate(sub.cancellationDate)}` : 'Cancelled'}
-                        </p>
+                      {/* 2. PRICE SECTION */}
+                      <div className="xl:w-[160px] p-5 flex flex-row xl:flex-col items-center justify-between xl:justify-center xl:border-l-2 border-t-2 xl:border-t-0 border-slate-300 dark:border-slate-600">
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider xl:mb-1.5">Price</p>
+                        <div className="text-right xl:text-center">
+                          <p className="text-xl font-black text-text-primary tracking-tight">
+                            {formatCurrency(sub.price, sub.currency)}
+                          </p>
+                        </div>
                       </div>
+
+                      {/* 3. RENEWAL SECTION */}
+                      <div className="xl:w-[160px] p-5 flex flex-row xl:flex-col items-center justify-between xl:justify-center xl:border-l-2 border-t-2 xl:border-t-0 border-slate-300 dark:border-slate-600">
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider xl:mb-1.5">Renewal</p>
+                        <div className="text-right xl:text-center">
+                          <p className="text-sm font-bold text-text-primary">
+                            {sub.status === 'active' ? formatDate(sub.renewalDate) : 'Cancelled'}
+                          </p>
+                          {sub.status === 'active' && (
+                            <p className="text-[10px] font-semibold text-violet-500 mt-0.5">
+                              in {getDaysUntilRenewal(sub.renewalDate)} days
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 4. ACTIONS SECTION */}
+                      <div className={`xl:w-[240px] p-4 flex items-center justify-center gap-2 xl:border-l-2 border-t-2 xl:border-t-0 border-slate-300 dark:border-slate-600 transition-opacity ${isDeleteMode ? 'opacity-40 pointer-events-none' : ''}`}>
+                        
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setShowEdit(sub); }}
+                          className="flex-1 flex flex-col items-center justify-center gap-1.5 py-2.5 rounded-xl text-fuchsia-700 bg-fuchsia-500/10 hover:bg-fuchsia-500/20 dark:text-fuchsia-400 transition-all"
+                        >
+                          <Pencil size={16} />
+                          <span className="text-[10px] font-bold">Edit</span>
+                        </button>
+                        
+                        <div className="w-[2px] h-8 bg-slate-300 dark:bg-slate-600 hidden xl:block" />
+
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setShowSplit(sub); }}
+                          disabled={sub.status !== 'active'}
+                          className="flex-1 flex flex-col items-center justify-center gap-1.5 py-2.5 rounded-xl text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 dark:text-emerald-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <Users size={16} />
+                          <span className="text-[10px] font-bold">Split</span>
+                        </button>
+
+                        <div className="w-[2px] h-8 bg-slate-300 dark:bg-slate-600 hidden xl:block" />
+
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setShowCancel(sub); }}
+                          disabled={sub.status !== 'active'}
+                          className="flex-1 flex flex-col items-center justify-center gap-1.5 py-2.5 rounded-xl text-slate-500 bg-slate-500/10 hover:bg-slate-500/20 dark:text-slate-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <Ban size={16} />
+                          <span className="text-[10px] font-bold">Cancel</span>
+                        </button>
+                      </div>
+
                     </div>
-                  </Card>
-                </TiltCard>
-              </motion.div>
-            ))}
+                  </TiltCard>
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
-
-          {filtered.length === 0 && (
-            <div className="glass-card px-4 py-12 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-bg-surface">
-                <Search className="h-5 w-5 text-text-muted" />
-              </div>
-              <h2 className="font-semibold text-text-primary">No active subscriptions</h2>
-              <p className="mt-1 text-sm text-text-secondary">Add a new subscription or check your cancelled list.</p>
-            </div>
-          )}
         </div>
       )}
 
-      {/* ==========================================
-          PREMIUM DETAIL MODAL (Card Grid Edition)
-          ========================================== */}
-      <AnimatePresence>
-        {selectedSub && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/40 backdrop-blur-md"
-            onClick={() => setSelectedSub(null)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="w-full max-w-md overflow-hidden rounded-[2rem] bg-bg-surface border border-border/50 shadow-2xl relative"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header Area */}
-              <div className="relative pt-10 pb-6 px-6 flex flex-col items-center justify-center border-b border-border/50">
-                <button 
-                  onClick={() => setSelectedSub(null)} 
-                  className="absolute top-4 right-4 p-2 rounded-full bg-bg-hover text-text-muted hover:text-text-primary transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-                
-                <motion.div variants={modalItemVariants} className="relative">
-                  <SubscriptionLogo
-                    name={selectedSub.name}
-                    websiteUrl={selectedSub.websiteUrl}
-                    category={selectedSub.category}
-                    className="relative h-20 w-20 rounded-[1.5rem] shadow-xl ring-4 ring-bg-surface"
-                  />
-                </motion.div>
-                
-                <motion.h2 variants={modalItemVariants} className="text-2xl font-bold text-text-primary text-center mt-4 tracking-tight">
-                  {selectedSub.name}
-                </motion.h2>
-                
-                <motion.div variants={modalItemVariants} className="flex items-center gap-2 mt-2">
-                   <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                      selectedSub.status === 'active' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
-                    }`}>
-                      {selectedSub.status}
-                    </span>
-                </motion.div>
-              </div>
-
-              {/* Body Content (Unified Card Grid) */}
-              <motion.div 
-                variants={modalContentVariants}
-                initial="hidden"
-                animate="visible"
-                className="p-6"
-              >
-                <div className="rounded-2xl border border-border/60 bg-bg-elevated overflow-hidden shadow-sm">
-                  
-                  {/* 2x2 DATA GRID */}
-                  <motion.div variants={modalItemVariants} className="grid grid-cols-2 divide-x divide-y divide-border/60">
-                    
-                    {/* Cell 1: Billing Amount */}
-                    <div className="p-5">
-                      <div className="flex items-center gap-2 text-text-muted mb-2">
-                        <CreditCard className="w-4 h-4" />
-                        <p className="text-[10px] font-bold uppercase tracking-wider">Amount</p>
-                      </div>
-                      <p className="text-lg font-black text-violet-500 truncate" title={formatCurrency(selectedSub.price, selectedSub.currency)}>
-                        {formatCurrency(selectedSub.price, selectedSub.currency)}
-                      </p>
-                    </div>
-
-                    {/* Cell 2: Renewal Date */}
-                    <div className="p-5">
-                      <div className="flex items-center gap-2 text-text-muted mb-2">
-                        <Calendar className="w-4 h-4" />
-                        <p className="text-[10px] font-bold uppercase tracking-wider">Renewal</p>
-                      </div>
-                      <p className="text-sm font-semibold text-text-primary">{formatDate(selectedSub.renewalDate)}</p>
-                    </div>
-
-                    {/* Cell 3: Category */}
-                    <div className="p-5">
-                      <div className="flex items-center gap-2 text-text-muted mb-2">
-                        <Tag className="w-4 h-4" />
-                        <p className="text-[10px] font-bold uppercase tracking-wider">Category</p>
-                      </div>
-                      <p className="text-sm font-semibold text-text-primary capitalize">{getCategoryLabel(selectedSub.category)}</p>
-                    </div>
-
-                    {/* Cell 4: Billing Cycle */}
-                    <div className="p-5">
-                      <div className="flex items-center gap-2 text-text-muted mb-2">
-                        <Repeat className="w-4 h-4" />
-                        <p className="text-[10px] font-bold uppercase tracking-wider">Cycle</p>
-                      </div>
-                      <p className="text-sm font-semibold text-text-primary capitalize">{selectedSub.billingFrequency}</p>
-                    </div>
-
-                  </motion.div>
-
-                  {/* Notes (If any) */}
-                  {selectedSub.notes && (
-                     <motion.div variants={modalItemVariants} className="p-5 border-t border-border/60 bg-bg-surface/30">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5">Notes</p>
-                        <p className="text-sm text-text-secondary leading-relaxed">{selectedSub.notes}</p>
-                     </motion.div>
-                  )}
-
-                  {/* ACTION BUTTONS (Soft Grey Cancel & Soft Rose Delete) */}
-                  <motion.div variants={modalItemVariants} className="p-5 border-t border-border/60 bg-bg-surface/50 flex flex-col gap-3">
-                     
-                     {/* Cancel Button: Soft Grey */}
-                     {selectedSub.status === 'active' && (
-                       <button 
-                          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold text-slate-700 bg-slate-200 hover:bg-slate-300 dark:text-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors duration-200" 
-                          onClick={() => { setShowCancel(selectedSub); setSelectedSub(null); }}
-                       >
-                         <Ban className="w-4 h-4 opacity-80" />
-                         Cancel Subscription
-                       </button>
-                     )}
-
-                     {/* Delete Button: SOFT ROSE (Pinkish-Red) */}
-                     <button 
-                        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold text-white bg-rose-400 hover:bg-rose-500 shadow-sm shadow-rose-400/20 transition-all duration-200" 
-                        onClick={() => { setShowDelete(selectedSub); setSelectedSub(null); }}
-                     >
-                       <Trash2 className="w-4 h-4 opacity-90" />
-                       Delete Permanently
-                     </button>
-
-                  </motion.div>
-
-                </div>
-              </motion.div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {!loading && !error && filtered.length === 0 && (
+        <div className="glass-card px-4 py-12 text-center rounded-[24px]">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-bg-surface">
+            <Search className="h-5 w-5 text-text-muted" />
+          </div>
+          <h2 className="font-semibold text-text-primary">No active subscriptions</h2>
+          <p className="mt-1 text-sm text-text-secondary">Add a new subscription or check your cancelled list.</p>
+        </div>
+      )}
 
       {/* Add modal */}
       <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Add Subscription" size="lg">
         <AddForm onSubmit={handleAdd} onCancel={() => setShowAdd(false)} />
       </Modal>
 
-      {/* Cancel modal */}
+      {/* Edit Modal */}
+      {showEdit && (
+        <Modal isOpen={true} onClose={() => setShowEdit(null)} title="Edit Subscription" size="lg">
+          <AddForm 
+            onSubmit={handleEdit} 
+            onCancel={() => setShowEdit(null)} 
+            initialData={showEdit} 
+          />
+        </Modal>
+      )}
+
+      {/* Cancel Confirmation Modal */}
       {showCancel && (
-        <Modal isOpen={true} onClose={() => setShowCancel(null)} title="Cancel Subscription" size="md">
+        <Modal isOpen={true} onClose={() => setShowCancel(null)} title="Cancel Subscription" size="sm">
           <CancelForm sub={showCancel} onSubmit={handleCancel} onCancel={() => setShowCancel(null)} />
         </Modal>
       )}
 
-      {/* Delete confirmation */}
-      {showDelete && (
-        <Modal isOpen={true} onClose={() => setShowDelete(null)} title="Delete Subscription" size="sm">
-          <p className="mb-5 text-sm leading-6 text-text-secondary">
-            Delete <strong className="text-text-primary">{showDelete.name}</strong>? This action cannot be undone.
-          </p>
-          <div className="flex flex-wrap justify-end gap-3">
-            <Button variant="ghost" onClick={() => setShowDelete(null)}>Keep Subscription</Button>
-            
-            {/* SOFT ROSE DELETE BUTTON FOR MODAL */}
-            <button 
-              onClick={handleDelete}
-              className="rounded-xl px-5 py-2.5 text-sm font-bold text-white bg-rose-400 hover:bg-rose-500 shadow-sm shadow-rose-400/20 transition-colors"
-            >
-              Delete Permanently
-            </button>
-          </div>
-        </Modal>
+      {/* Split Modal */}
+      {showSplit && (
+        <SplitModal 
+          isOpen={true}
+          onClose={() => setShowSplit(null)}
+          sub={showSplit}
+          onSave={handleSplit}
+        />
       )}
     </div>
   );
 }
 
 // ==========================================
-// STYLISH ADD FORM
+// STYLISH ADD/EDIT FORM
 // ==========================================
 function AddForm({
   onSubmit,
   onCancel,
+  initialData,
 }: {
   onSubmit: (data: SubscriptionFormData) => Promise<void>;
   onCancel: () => void;
+  initialData?: Subscription | null;
 }) {
   const {
     register,
@@ -589,7 +604,17 @@ function AddForm({
     formState: { errors, isSubmitting },
   } = useForm<SubscriptionFormData>({
     resolver: zodResolver(subscriptionSchema),
-    defaultValues: {
+    defaultValues: initialData ? {
+      name: initialData.name,
+      price: initialData.price,
+      currency: initialData.currency,
+      billingFrequency: initialData.billingFrequency,
+      category: initialData.category,
+      startDate: initialData.startDate,
+      renewalDate: initialData.renewalDate,
+      websiteUrl: initialData.websiteUrl,
+      notes: initialData.notes,
+    } : {
       currency: 'USD',
       billingFrequency: 'monthly',
       category: 'streaming',
@@ -698,12 +723,6 @@ function AddForm({
         {errors.websiteUrl && <p className={errorClass}>{errors.websiteUrl.message}</p>}
       </div>
 
-      <div>
-        <label className={labelClass}>Notes (Optional)</label>
-        <textarea rows={3} placeholder="Any additional details..." {...register('notes')} className={`${inputClass} resize-none`} />
-        {errors.notes && <p className={errorClass}>{errors.notes.message}</p>}
-      </div>
-
       <div className="flex flex-wrap justify-end gap-3 border-t border-border pt-5 mt-2">
         <Button variant="ghost" type="button" onClick={onCancel}>Cancel</Button>
         <Button variant="glow" type="submit" disabled={isSubmitting} className="min-w-[140px]">
@@ -715,7 +734,7 @@ function AddForm({
 }
 
 // ==========================================
-// CANCEL FORM
+// 🌟 SIMPLE CANCEL CONFIRMATION FORM 🌟
 // ==========================================
 function CancelForm({
   sub,
@@ -726,38 +745,53 @@ function CancelForm({
   onSubmit: (data: CancelFormData) => Promise<void>;
   onCancel: () => void;
 }) {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<CancelFormData>({
-    resolver: zodResolver(cancelSchema),
-    defaultValues: {
-      cancellationDate: new Date().toISOString().split('T')[0],
-    },
-  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleConfirm = async () => {
+    setIsSubmitting(true);
+    try {
+      // Aaj ki date aur blank reason bhej rahe hain
+      await onSubmit({
+        cancellationDate: new Date().toISOString().split('T')[0],
+        cancellationReason: '',
+      });
+    } catch (error) {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="rounded-xl border border-border bg-bg-surface p-4">
-        <p className="text-sm text-text-secondary">You are cancelling</p>
-        <p className="mt-1 font-semibold text-text-primary">{sub.name}</p>
-        <p className="mt-1 text-xs text-text-muted">This will move the subscription to your Graveyard.</p>
+    <div className="space-y-6 pt-4 pb-2">
+      <div className="text-center">
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-rose-500/10 border border-rose-500/20">
+          <Ban className="h-8 w-8 text-rose-500" />
+        </div>
+        <h3 className="text-xl font-black text-text-primary mb-2">
+          Are you sure?
+        </h3>
+        <p className="text-sm text-text-secondary leading-relaxed">
+          Are you sure you want to bury this?🪦
+        </p>
       </div>
 
-      <Input label="Cancellation Date" type="date" {...register('cancellationDate')} error={errors.cancellationDate?.message} />
-      <Textarea label="Reason (optional)" {...register('cancellationReason')} error={errors.cancellationReason?.message} />
-
-      <div className="flex flex-wrap justify-end gap-3 border-t border-border pt-4">
-        {/* Solid Grey button for Cancel - 'Keep It' removed */}
-        <button 
-          type="submit" 
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center pt-2">
+        <Button 
+          variant="ghost" 
+          onClick={onCancel} 
           disabled={isSubmitting}
-          className="rounded-xl px-5 py-2.5 text-sm font-bold text-slate-700 bg-slate-200 hover:bg-slate-300 dark:text-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+          className="w-full sm:w-auto min-w-[120px]"
         >
-          {isSubmitting ? 'Cancelling...' : 'Cancel Subscription'}
-        </button>
+          Keep it
+        </Button>
+        <Button 
+          variant="danger" 
+          onClick={handleConfirm} 
+          disabled={isSubmitting}
+          className="w-full sm:w-auto min-w-[120px] bg-rose-500 hover:bg-rose-600 text-white"
+        >
+          {isSubmitting ? 'Cancelling...' : 'Confirm Cancel'}
+        </Button>
       </div>
-    </form>
+    </div>
   );
 }

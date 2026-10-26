@@ -25,11 +25,7 @@ import {
   getCategoryColor,
 } from '../utils/calculations';
 
-// ==========================================
-// FIX: TypeScript Errors ko bypass karne ke liye
-// ==========================================
 const MotionDiv = motion.div as any;
-// ==========================================
 
 const chartTooltipStyle = {
   backgroundColor: 'var(--bg-elevated)',
@@ -79,7 +75,14 @@ export function Analytics() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
+        {/* 🌟 UPDATED SKELETON FOR HEADER 🌟 */}
+        <div className="flex items-start gap-3.5">
+          <Skeleton className="h-11 w-11 rounded-xl shrink-0" />
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Skeleton className="h-[450px] lg:col-span-2" />
           <Skeleton className="h-80" />
@@ -105,16 +108,24 @@ export function Analytics() {
 
   return (
     <div className="space-y-6">
+      {/* 🌟 COMPACT & BALANCED HEADER 🌟 */}
       <MotionDiv
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
+        className="flex items-center gap-3.5"
       >
-        <h1 className="text-3xl font-bold text-text-primary">
-          Analytics
-        </h1>
-        <p className="text-text-secondary text-sm mt-1">
-          Detailed spending insights and trends
-        </p>
+        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl">
+          <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/40 to-transparent dark:from-white/10 dark:to-transparent border border-white/50 dark:border-white/10 shadow-sm backdrop-blur-sm" />
+          <span className="relative z-10 text-2xl drop-shadow-md">📊</span>
+        </div>
+        <div className="flex flex-col justify-center">
+          <h1 className="text-2xl font-black tracking-tight text-text-primary sm:text-3xl leading-tight">
+            Analytics<span className="text-violet-500">.</span>
+          </h1>
+          <p className="mt-1 text-xs sm:text-sm leading-tight text-text-secondary font-medium">
+            Detailed spending insights and trends
+          </p>
+        </div>
       </MotionDiv>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

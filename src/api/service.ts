@@ -96,6 +96,28 @@ export const api = {
     return mapSubscription(data);
   },
 
+  // ==========================================
+  // 🌟 NAYE FUNCTIONS (Worth It & Split)
+  // ==========================================
+  
+  async rateSubscription(id: string, isWorthIt: boolean): Promise<Subscription> {
+    const data = await apiRequest<any>(`/subscriptions/${id}/rate`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isWorthIt }),
+    });
+    return mapSubscription(data);
+  },
+
+  async splitSubscription(id: string, sharedWith: { email: string; amountOwed: number; hasPaid: boolean }[]): Promise<Subscription> {
+    const data = await apiRequest<any>(`/subscriptions/${id}/split`, {
+      method: 'PATCH',
+      body: JSON.stringify({ sharedWith }),
+    });
+    return mapSubscription(data);
+  },
+
+  // ==========================================
+
   async getDashboardStats() {
     const subs = await this.getSubscriptions();
     const rates = await getExchangeRates(); // Live rates fetch kiye

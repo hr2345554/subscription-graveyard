@@ -1041,3 +1041,10 @@
   .auth-page .auth-card-wrap { width: min(100%, 440px); margin: auto; transform: translateX(0); }
   .auth-page .auth-panel-footer { position: fixed; right: 20px; bottom: 16px; left: 20px; }
 }
+
+
+/* Agar page ke andar bhi scroll aa raha ho toh */
+.auth-page {
+  height: 100vh !important;
+  overflow: hidden !important;
+}
