@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { Mail, Plus, Trash2, Users } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, X, Users, CheckCircle2, Loader2 } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
+import { api } from '../api/service'; // API import kiya
 import type { Subscription } from '../types';
 import { formatCurrency } from '../utils/calculations';
 
@@ -13,30 +14,52 @@ interface SplitModalProps {
 }
 
 export function SplitModal({ isOpen, onClose, sub, onSave }: SplitModalProps) {
-  const [emails, setEmails] = useState<string[]>(['']);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
   
   const totalPrice = Number(sub.price) || 0;
-  const validEmailsCount = emails.filter(e => e.includes('@')).length;
-  const splitAmount = totalPrice / (validEmailsCount + 1);
-  const totalPeople = validEmailsCount + 1;
+  const splitAmount = totalPrice / (selectedUsers.length + 1);
+  const totalPeople = selectedUsers.length + 1;
 
-  const handleAddEmail = () => setEmails([...emails, '']);
-  
-  const handleRemoveEmail = (index: number) => {
-    const newEmails = emails.filter((_, i) => i !== index);
-    setEmails(newEmails.length > 0 ? newEmails : ['']);
+  // 🌟 API se users search karne ka logic
+  useEffect(() => {
+    if (searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const users = await api.searchUsers(searchQuery);
+        // Jo already select ho chuke hain unko hata dein
+        const filtered = users.filter((u: any) => !selectedUsers.find(su => su._id === u._id));
+        setSearchResults(filtered);
+      } catch (error) {
+        console.error("Search failed");
+      } finally {
+        setIsSearching(false);
+      }
+    }, 500); // 500ms wait taake har word par API na hit ho
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery, selectedUsers]);
+
+  const handleSelectUser = (user: any) => {
+    setSelectedUsers([...selectedUsers, user]);
+    setSearchQuery('');
+    setSearchResults([]);
   };
 
-  const handleEmailChange = (index: number, value: string) => {
-    const newEmails = [...emails];
-    newEmails[index] = value;
-    setEmails(newEmails);
+  const handleRemoveUser = (userId: string) => {
+    setSelectedUsers(selectedUsers.filter(u => u._id !== userId));
   };
 
   const handleSave = () => {
-    const validEmails = emails.filter(e => e.includes('@'));
-    const sharedWith = validEmails.map(email => ({
-      email,
+    const sharedWith = selectedUsers.map(user => ({
+      email: user.email,
       amountOwed: splitAmount,
       hasPaid: false
     }));
@@ -45,10 +68,10 @@ export function SplitModal({ isOpen, onClose, sub, onSave }: SplitModalProps) {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Split Subscription" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title="Share Subscription" size="md">
       <div className="space-y-5 pt-1">
         
-        {/* 🌟 COMPACT HEADER BANNER 🌟 */}
+        {/* Header Banner */}
         <div className="relative overflow-hidden rounded-xl border border-emerald-500/30 bg-emerald-50/80 dark:border-emerald-500/20 dark:bg-emerald-950/30 p-3.5 shadow-sm">
           <div className="flex items-center gap-3 relative z-10">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white dark:bg-slate-900 shadow-sm border border-emerald-500/20">
@@ -65,51 +88,69 @@ export function SplitModal({ isOpen, onClose, sub, onSave }: SplitModalProps) {
           </div>
         </div>
 
-        {/* 🌟 EMAIL INPUT SECTION 🌟 */}
-        <div className="space-y-2.5">
+        {/* 🌟 SEARCH USERS 🌟 */}
+        <div className="space-y-3">
           <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
-            <Users size={13} className="text-emerald-500" /> Friends' Emails
+            <Users size={13} className="text-emerald-500" /> Search App Users
           </label>
           
-          <div className="space-y-2.5">
-            {emails.map((email, index) => (
-              <div key={index} className="flex items-center gap-2 group">
-                <div className="relative flex-1">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted group-focus-within:text-emerald-500 transition-colors" />
-                  <input
-                    type="email"
-                    placeholder="friend@example.com"
-                    value={email}
-                    onChange={(e) => handleEmailChange(index, e.target.value)}
-                    className="w-full rounded-lg border border-border/80 bg-bg-surface/80 py-2.5 pl-10 pr-4 text-sm font-medium text-text-primary transition-all outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 placeholder:text-text-muted"
-                  />
-                </div>
-                
-                {emails.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveEmail(index)}
-                    className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+          <div className="relative">
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+              <input
+                type="text"
+                placeholder="Search by name or email (e.g. Ali)"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border border-border/80 bg-bg-surface/80 py-2.5 pl-10 pr-10 text-sm font-medium text-text-primary transition-all outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 placeholder:text-text-muted"
+              />
+              {isSearching && (
+                <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500 animate-spin" />
+              )}
+            </div>
+
+            {/* Dropdown Results */}
+            {searchQuery.length > 0 && !isSearching && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-bg-elevated border border-border rounded-lg shadow-xl z-50 overflow-hidden max-h-48 overflow-y-auto">
+                {searchResults.length > 0 ? (
+                  searchResults.map(user => (
+                    <button
+                      key={user._id}
+                      onClick={() => handleSelectUser(user)}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-bg-hover transition-colors text-left"
+                    >
+                      <div className="h-8 w-8 rounded-full bg-emerald-500/20 text-emerald-600 flex items-center justify-center font-bold text-xs uppercase">
+                        {user.name.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-text-primary">{user.name}</p>
+                        <p className="text-[10px] text-text-secondary">{user.email}</p>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-xs text-text-muted">No users found</div>
                 )}
               </div>
-            ))}
+            )}
           </div>
 
-          <div className="flex justify-start pt-1">
-            <button
-              type="button"
-              onClick={handleAddEmail}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 transition-all hover:bg-emerald-500/10"
-            >
-              <Plus size={14} /> Add friend
-            </button>
-          </div>
+          {/* Selected Users List */}
+          {selectedUsers.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-2">
+              {selectedUsers.map(user => (
+                <div key={user._id} className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
+                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">{user.name}</span>
+                  <button onClick={() => handleRemoveUser(user._id)} className="text-emerald-600/50 hover:text-emerald-600">
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* 🌟 COMPACT PRICE BOX (No Extra Words) 🌟 */}
+        {/* Price Box */}
         <div className="relative overflow-hidden rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 px-4 py-3 shadow-sm flex items-center justify-between">
           <div className="relative z-10">
             <p className="text-[10px] font-bold text-amber-700/70 dark:text-amber-500/80 uppercase tracking-wider mb-0.5">
@@ -122,29 +163,23 @@ export function SplitModal({ isOpen, onClose, sub, onSave }: SplitModalProps) {
             </div>
           </div>
           
-          {/* Clean Badge */}
           <div className="relative z-10 flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-500/15 px-2.5 py-1 rounded-md border border-amber-500/20">
             <Users size={13} /> {totalPeople} {totalPeople === 1 ? 'person' : 'people'}
           </div>
         </div>
 
-        {/* 🌟 FOOTER ACTIONS 🌟 */}
+        {/* Actions */}
         <div className="flex justify-end gap-3 pt-3 border-t border-border/60">
-          <Button 
-            type="button" 
-            variant="ghost" 
-            onClick={onClose}
-            className="h-10 px-4 text-sm font-bold text-text-secondary hover:text-text-primary hover:bg-bg-hover"
-          >
+          <Button type="button" variant="ghost" onClick={onClose} className="h-10 px-4 text-sm font-bold">
             Cancel
           </Button>
           <Button 
             type="button" 
             onClick={handleSave}
-            disabled={validEmailsCount === 0}
-            className="h-10 px-6 text-sm font-bold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 shadow-md shadow-emerald-500/20 transition-all disabled:opacity-50"
+            disabled={selectedUsers.length === 0}
+            className="h-10 px-6 text-sm font-bold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 shadow-md transition-all disabled:opacity-50"
           >
-            Save Split
+            Send Invite
           </Button>
         </div>
       </div>

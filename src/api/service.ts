@@ -1,4 +1,4 @@
-import { apiRequest } from './client'; // Typo fix kar diya hai
+import { apiRequest } from './client';
 import type { Subscription } from '../types';
 
 // ==========================================
@@ -40,31 +40,25 @@ const toMonthly = (price: number, freq: string) => {
 };
 
 const mapSubscription = (sub: any): Subscription => {
-  return {
-    ...sub,
-    id: sub._id || sub.id,
-  };
+  return { ...sub, id: sub._id || sub.id };
 };
 
 export const api = {
+  // ==========================================
+  // SUBSCRIPTIONS (MY SUBS)
+  // ==========================================
   async getSubscriptions(): Promise<Subscription[]> {
     const data = await apiRequest<any[]>('/subscriptions', { method: 'GET' });
     return data.map(mapSubscription);
   },
 
   async createSubscription(subData: any): Promise<Subscription> {
-    const data = await apiRequest<any>('/subscriptions', {
-      method: 'POST',
-      body: JSON.stringify(subData),
-    });
+    const data = await apiRequest<any>('/subscriptions', { method: 'POST', body: JSON.stringify(subData) });
     return mapSubscription(data);
   },
 
   async updateSubscription(id: string, updates: any): Promise<Subscription> {
-    const data = await apiRequest<any>(`/subscriptions/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    });
+    const data = await apiRequest<any>(`/subscriptions/${id}`, { method: 'PUT', body: JSON.stringify(updates) });
     return mapSubscription(data);
   },
 
@@ -75,11 +69,7 @@ export const api = {
   async cancelSubscription(id: string, date: string, reason?: string): Promise<Subscription> {
     const data = await apiRequest<any>(`/subscriptions/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ 
-        status: 'cancelled', 
-        cancellationDate: date, 
-        cancellationReason: reason || '' 
-      }),
+      body: JSON.stringify({ status: 'cancelled', cancellationDate: date, cancellationReason: reason || '' }),
     });
     return mapSubscription(data);
   },
@@ -87,52 +77,67 @@ export const api = {
   async restoreSubscription(id: string): Promise<Subscription> {
     const data = await apiRequest<any>(`/subscriptions/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ 
-        status: 'active', 
-        cancellationDate: null, 
-        cancellationReason: '' 
-      }),
+      body: JSON.stringify({ status: 'active', cancellationDate: null, cancellationReason: '' }),
     });
     return mapSubscription(data);
   },
-
-  // ==========================================
-  // 🌟 NAYE FUNCTIONS (Worth It & Split)
-  // ==========================================
   
   async rateSubscription(id: string, isWorthIt: boolean): Promise<Subscription> {
-    const data = await apiRequest<any>(`/subscriptions/${id}/rate`, {
-      method: 'PATCH',
-      body: JSON.stringify({ isWorthIt }),
-    });
-    return mapSubscription(data);
-  },
-
-  async splitSubscription(id: string, sharedWith: { email: string; amountOwed: number; hasPaid: boolean }[]): Promise<Subscription> {
-    const data = await apiRequest<any>(`/subscriptions/${id}/split`, {
-      method: 'PATCH',
-      body: JSON.stringify({ sharedWith }),
-    });
+    const data = await apiRequest<any>(`/subscriptions/${id}/rate`, { method: 'PATCH', body: JSON.stringify({ isWorthIt }) });
     return mapSubscription(data);
   },
 
   // ==========================================
+  // SPLIT / SHARED SUBSCRIPTIONS
+  // ==========================================
+  
+  // 1. Search Registered Users (Frontend Modal ke liye)
+  async searchUsers(query: string): Promise<any[]> {
+    return apiRequest<any[]>(`/auth/search?q=${query}`, { method: 'GET' });
+  },
 
+  // 2. Send Split Invite (Owner)
+  async splitSubscription(id: string, sharedWith: { email: string; amountOwed: number; hasPaid: boolean }[]): Promise<Subscription> {
+    const data = await apiRequest<any>(`/subscriptions/${id}/split`, { method: 'PATCH', body: JSON.stringify({ sharedWith }) });
+    return mapSubscription(data);
+  },
+
+  // 3. Get Shared with Me List (Friend)
+  async getSharedSubscriptions(): Promise<any[]> {
+    return apiRequest<any[]>('/splits/shared-with-me', { method: 'GET' });
+  },
+
+  // 4. Accept Invitation
+  async acceptSplit(id: string): Promise<any> {
+    return apiRequest<any>(`/splits/${id}/accept`, { method: 'PATCH' });
+  },
+
+  // 5. Pay Now (Friend)
+  async paySplit(id: string): Promise<any> {
+    return apiRequest<any>(`/splits/${id}/pay`, { method: 'PATCH' });
+  },
+
+  // 6. Remove / Leave Split (Naya Function)
+  async removeSplit(id: string): Promise<any> {
+    return apiRequest<any>(`/splits/${id}`, { method: 'DELETE' });
+  },
+
+  // ==========================================
+  // DASHBOARD STATS
+  // ==========================================
   async getDashboardStats() {
     const subs = await this.getSubscriptions();
-    const rates = await getExchangeRates(); // Live rates fetch kiye
+    const rates = await getExchangeRates();
 
     const active = subs.filter((s: any) => s.status === 'active');
     const cancelled = subs.filter((s: any) => s.status === 'cancelled');
     
-    // Total Monthly Spending (Convert to USD)
     const totalMonthlySpending = active.reduce((sum, sub: any) => {
         const monthlyAmount = toMonthly(Number(sub.price) || 0, sub.billingFrequency);
         const usdAmount = convertToUSD(monthlyAmount, sub.currency, rates);
         return sum + usdAmount;
     }, 0);
 
-    // Category Breakdown (Convert to USD)
     const categoryMap: Record<string, { amount: number, count: number }> = {};
     active.forEach((sub: any) => {
       const cat = sub.category || 'other';
@@ -148,7 +153,6 @@ export const api = {
       category, amount: data.amount, count: data.count
     }));
 
-    // Monthly Trend (Convert to USD)
     const monthlyTrend = [];
     const now = new Date();
     for (let i = 5; i >= 0; i--) {
@@ -180,7 +184,7 @@ export const api = {
     return {
       activeCount: active.length,
       cancelledCount: cancelled.length,
-      totalMonthlySpending, // Yeh ab USD mein calculate hoga
+      totalMonthlySpending,
       totalAnnualSpending: totalMonthlySpending * 12,
       totalSaved: 0,
       upcomingRenewals,
