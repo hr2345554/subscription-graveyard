@@ -65,7 +65,7 @@ const MagneticButton = ({ children, className, ...props }: any) => {
   const [isHovered, setIsHovered] = useState(false);
 
   const handleMouse = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (!ref.current || window.innerWidth < 768) return; // Mobile par tilt disable
+    if (!ref.current || window.innerWidth < 768) return;
     const { clientX, clientY } = e;
     const { height, width, left, top } = ref.current.getBoundingClientRect();
     const middleX = clientX - (left + width / 2);
@@ -148,7 +148,6 @@ export function Login() {
 
   const [submitError, setSubmitError] = useState('');
   const [signupSuccess, setSignupSuccess] = useState('');
-  const [emailNotRegistered, setEmailNotRegistered] = useState(false);
   
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -204,7 +203,6 @@ export function Login() {
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError('');
     setSignupSuccess('');
-    setEmailNotRegistered(false);
     setIsLoading(true);
 
     try {
@@ -222,15 +220,13 @@ export function Login() {
         finishSignIn(createUser(values.email, values.username));
       }
     } catch (error: any) {
-      const message = error instanceof Error ? error.message : 'Unable to authenticate. Please try again.';
-      
-      if (mode === 'login' && (message.includes('registered') || error.code === 'EMAIL_NOT_FOUND')) {
-        setEmailNotRegistered(true);
-        setSubmitError('This email is not registered.');
+      // 🌟 FIX: Security - Generic error message to prevent User Enumeration
+      if (mode === 'login') {
+        setSubmitError('Invalid email or password. Please try again.');
       } else {
-        setSubmitError(message);
-        setShakeKey((value) => value + 1);
+        setSubmitError(error.message || 'Unable to create account. Please try again.');
       }
+      setShakeKey((value) => value + 1);
     } finally {
       setIsLoading(false);
     }
@@ -242,7 +238,6 @@ export function Login() {
     setSignupSuccess('');
     setShowPassword(false);
     setShowConfirmPassword(false);
-    setEmailNotRegistered(false);
     clearErrors();
     reset({ email: '', username: '', password: '', confirmPassword: '' });
   };
@@ -417,7 +412,7 @@ export function Login() {
                           autoComplete="off" 
                           placeholder=" "
                           {...register('username')}
-                          className="h-12 text-base" // 🌟 Mobile touch friendly
+                          className="h-12 text-base"
                         />
                         <label htmlFor="auth-username">Username</label>
                       </motion.div>
@@ -438,7 +433,7 @@ export function Login() {
                         placeholder=" "
                         aria-invalid={!!errors.email}
                         {...register('email')}
-                        className="h-12 text-base" // 🌟 Mobile touch friendly
+                        className="h-12 text-base"
                       />
                       <label htmlFor="auth-email">Email address</label>
                       {touchedFields.email && !errors.email && email && (
@@ -475,7 +470,7 @@ export function Login() {
                         placeholder=" "
                         aria-invalid={!!errors.password}
                         {...register('password')}
-                        className="h-12 text-base" // 🌟 Mobile touch friendly
+                        className="h-12 text-base"
                       />
                       <label htmlFor="auth-password">Password</label>
                       <button
@@ -516,7 +511,7 @@ export function Login() {
                           autoComplete="new-password" 
                           placeholder=" "
                           {...register('confirmPassword')}
-                          className="h-12 text-base" // 🌟 Mobile touch friendly
+                          className="h-12 text-base"
                         />
                         <label htmlFor="auth-confirm-password">Confirm Password</label>
                         <button
@@ -598,24 +593,6 @@ export function Login() {
                         </motion.div>
                       )}
                     </AnimatePresence>
-
-                    {emailNotRegistered && (
-                      <motion.button
-                        type="button"
-                        initial={{ opacity: 0, y: -6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        onClick={() => {
-                          setMode('signup');
-                          setSubmitError('');
-                          setEmailNotRegistered(false);
-                          const currentEmail = watch('email');
-                          reset({ email: currentEmail, username: '', password: '', confirmPassword: '' });
-                        }}
-                        className="w-full flex items-center justify-center gap-2 py-3 bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 rounded-xl text-sm font-bold transition-all hover:bg-violet-200 dark:hover:bg-violet-900/50"
-                      >
-                        Create Account with {watch('email')} <ArrowRight size={16} />
-                      </motion.button>
-                    )}
 
                     <MagneticButton
                       className="auth-submit w-full h-14 sm:h-[56px] rounded-2xl mt-2 text-base font-bold"
