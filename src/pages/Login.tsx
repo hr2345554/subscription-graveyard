@@ -24,8 +24,9 @@ import './auth.css';
 
 type AuthMode = 'login' | 'signup';
 
+// 🌟 FIX: Removed .trim() so that spaces in email are treated as invalid
 const authSchema = z.object({
-  email: z.string().trim().min(1, 'Please enter your email address').email("That email doesn't look right"),
+  email: z.string().min(1, 'Please enter your email address').email("That email doesn't look right"),
   username: z.string().optional(),
   password: z.string().min(1, 'Please enter your password'),
   confirmPassword: z.string().optional(),
@@ -220,7 +221,6 @@ export function Login() {
         finishSignIn(createUser(values.email, values.username));
       }
     } catch (error: any) {
-      // 🌟 FIX: Security - Generic error message to prevent User Enumeration
       if (mode === 'login') {
         setSubmitError('Invalid email or password. Please try again.');
       } else {
@@ -257,7 +257,7 @@ export function Login() {
 
       <DataRunners smoothX={smoothX} smoothY={smoothY} />
 
-      {/* 🌟 LEFT SCENE: Mobile par hide, Desktop par visible */}
+      {/* 🌟 LEFT SCENE */}
       <section
         className={`auth-scene hidden lg:flex flex-1 relative ${submitError ? 'is-error' : ''} ${isSuccess ? 'is-success' : ''}`}
         aria-label="Subscription app animation"
@@ -303,7 +303,7 @@ export function Login() {
         <div className="scene-coordinate">SG — SUBSCRIPTION CONTROL</div>
       </section>
 
-      {/* 🌟 RIGHT PANEL: Mobile par full width, Desktop par half */}
+      {/* 🌟 RIGHT PANEL */}
       <section className="auth-panel relative z-30 flex-1 w-full flex flex-col justify-center items-center px-4 py-8 lg:py-12 lg:px-8 min-h-screen lg:min-h-0 bg-bg-base/50 lg:bg-transparent backdrop-blur-sm lg:backdrop-blur-none">
         <div className="auth-panel-glow hidden lg:block" />
         <div className="auth-mobile-fog" />
@@ -397,7 +397,6 @@ export function Login() {
 
                   <form onSubmit={onSubmit} noValidate autoComplete="off" className="auth-form flex flex-col gap-4">
                     
-                    {/* 🌟 USERNAME (Signup Only) */}
                     {mode === 'signup' && (
                       <motion.div
                         className={`auth-field ${errors.username ? 'has-error' : ''}`}
@@ -418,7 +417,7 @@ export function Login() {
                       </motion.div>
                     )}
 
-                    {/* 🌟 EMAIL */}
+                    {/* 🌟 EMAIL: Error text removed, Tick only when valid */}
                     <motion.div
                       className={`auth-field ${errors.email ? 'has-error' : ''} ${touchedFields.email && !errors.email && email ? 'is-valid' : ''}`}
                       initial={reduceMotion ? false : { opacity: 0, y: 8 }}
@@ -436,26 +435,14 @@ export function Login() {
                         className="h-12 text-base"
                       />
                       <label htmlFor="auth-email">Email address</label>
+                      
                       {touchedFields.email && !errors.email && email && (
                         <Check className="auth-field-check" size={16} />
                       )}
                     </motion.div>
 
-                    <AnimatePresence>
-                      {errors.email && (
-                        <motion.p
-                          id="email-error"
-                          className="auth-field-error"
-                          initial={{ opacity: 0, height: 0, y: -4 }}
-                          animate={{ opacity: 1, height: 'auto', y: 0 }}
-                          exit={{ opacity: 0, height: 0 }}
-                        >
-                          {errors.email.message}
-                        </motion.p>
-                      )}
-                    </AnimatePresence>
+                    {/* 🌟 ERROR TEXT BLOCK REMOVED HERE 🌟 */}
 
-                    {/* 🌟 PASSWORD */}
                     <motion.div
                       className={`auth-field ${errors.password ? 'has-error' : ''}`}
                       initial={reduceMotion ? false : { opacity: 0, y: 8 }}
@@ -496,7 +483,6 @@ export function Login() {
                       )}
                     </AnimatePresence>
 
-                    {/* 🌟 CONFIRM PASSWORD (Signup Only) */}
                     {mode === 'signup' && (
                       <motion.div
                         className={`auth-field ${errors.confirmPassword ? 'has-error' : ''}`}
