@@ -24,11 +24,12 @@ async function getExchangeRates() {
   return exchangeRates;
 }
 
-function convertToUSD(amount: number, currency: string, rates: Record<string, number>) {
+// 🌟 FIX 1: Agar rate na mile toh 'null' return karo, amount ko 'as is' add mat karo
+function convertToUSD(amount: number, currency: string, rates: Record<string, number>): number | null {
   const curr = (currency || 'USD').toUpperCase();
   if (curr === 'USD') return amount;
   const rate = rates[curr];
-  if (!rate) return amount; 
+  if (!rate || !Number.isFinite(rate)) return null; // ❌ Rate nahi mila toh skip karo
   return amount / rate; 
 }
 
@@ -50,7 +51,7 @@ export type SubscriptionStatus = 'active' | 'cancelled' | 'paused' | 'all';
 
 export interface GetSubscriptionsParams {
   search?: string;
-  status?: SubscriptionStatus | string;  // ✅ flexible for state 'string'
+  status?: SubscriptionStatus | string;
   page?: number;
   limit?: number;
 }
@@ -68,11 +69,10 @@ export const api = {
   // ==========================================
   async getSubscriptions(params?: GetSubscriptionsParams): Promise<SubscriptionsResponse> {
     const search = params?.search || '';
-    const status = params?.status || 'active';   // ✅ default
+    const status = params?.status || 'active';
     const page   = params?.page   || 1;
     const limit  = params?.limit  || 10;
 
-    // ✅ status bhi query string mein bhejna zaroori hai
     const queryString =
       `?search=${encodeURIComponent(search)}` +
       `&status=${encodeURIComponent(status)}` +
@@ -157,8 +157,6 @@ export const api = {
   // DASHBOARD STATS
   // ==========================================
   async getDashboardStats() {
-    // ✅ status: 'all' pass karo — warna dashboard ko sirf active subs milenge
-    //    aur cancelled count 0 dikhega
     const res = await this.getSubscriptions({ status: 'all', limit: 10000 });
     const subs = res.data;
     
@@ -167,18 +165,23 @@ export const api = {
     const active = subs.filter((s: any) => s.status === 'active');
     const cancelled = subs.filter((s: any) => s.status === 'cancelled');
     
+    // 🌟 FIX 2: Total Spend Calculate karte waqt null skip karo
     const totalMonthlySpending = active.reduce((sum, sub: any) => {
       const monthlyAmount = toMonthly(Number(sub.price) || 0, sub.billingFrequency);
       const usdAmount = convertToUSD(monthlyAmount, sub.currency, rates);
+      if (usdAmount === null) return sum; 
       return sum + usdAmount;
     }, 0);
 
+    // 🌟 FIX 3: Category Breakdown mein null skip karo
     const categoryMap: Record<string, { amount: number, count: number }> = {};
     active.forEach((sub: any) => {
       const cat = sub.category || 'other';
       const monthlyAmount = toMonthly(Number(sub.price) || 0, sub.billingFrequency);
       const usdAmount = convertToUSD(monthlyAmount, sub.currency, rates);
       
+      if (usdAmount === null) return; // ❌ Skip if no exchange rate
+
       if (!categoryMap[cat]) categoryMap[cat] = { amount: 0, count: 0 };
       categoryMap[cat].amount += usdAmount;
       categoryMap[cat].count += 1;
@@ -188,6 +191,7 @@ export const api = {
       category, amount: data.amount, count: data.count
     }));
 
+    // 🌟 FIX 4: Monthly Trend mein null skip karo
     const monthlyTrend = [];
     const now = new Date();
     for (let i = 5; i >= 0; i--) {
@@ -199,7 +203,10 @@ export const api = {
         const startDate = new Date(sub.startDate || sub.createdAt || now);
         if (startDate <= d || (startDate.getMonth() === d.getMonth() && startDate.getFullYear() === d.getFullYear())) {
            const monthlyAmount = toMonthly(Number(sub.price) || 0, sub.billingFrequency);
-           monthSpending += convertToUSD(monthlyAmount, sub.currency, rates);
+           const usdAmount = convertToUSD(monthlyAmount, sub.currency, rates);
+           if (usdAmount !== null) { // ❌ Skip if no exchange rate
+             monthSpending += usdAmount;
+           }
         }
       });
       monthlyTrend.push({ month: monthLabel, amount: monthSpending });

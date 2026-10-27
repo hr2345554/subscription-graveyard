@@ -1,7 +1,10 @@
-import { useState, useEffect, useCallback, useRef, type ReactNode, type MouseEvent } from 'react';
+import { useState, useEffect, useRef, type ReactNode, type MouseEvent } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'motion/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+// 🌟 TanStack Query Imports
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+
 import { api } from '../api/service';
 import type {
   Subscription,
@@ -23,7 +26,7 @@ import {
   getDaysUntilRenewal,
   getCategoryLabel,
 } from '../utils/calculations';
-import { Plus, Search, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, X, Trash2, Ban, Users, Pencil, CheckCircle2, ArrowRight, Check, CreditCard } from 'lucide-react';
+import { Plus, Search, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, X, Trash2, Ban, Users, Pencil, CheckCircle2, ArrowRight, Check, CreditCard, AlertTriangle } from 'lucide-react';
 import { SubscriptionLogo } from '../components/ui/SubscriptionLogo';
 import { SplitModal } from '../components/SplitModal';
 
@@ -123,32 +126,31 @@ const frequencies: { value: BillingFrequency; label: string }[] = [
 ];
 
 export function Subscriptions() {
-  const [activeTab, setActiveTab] = useState<'my-subs' | 'shared'>('my-subs');
+  const queryClient = useQueryClient();
 
-  const [subs, setSubs] = useState<Subscription[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState<'my-subs' | 'shared'>('my-subs');
   
-  // 🌟 Search & Pagination States
+  // Search & Pagination States
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('active'); 
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
 
-  const [sharedSubs, setSharedSubs] = useState<any[]>([]);
-  const [loadingShared, setLoadingShared] = useState(false);
-
+  // Modals States
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState<Subscription | null>(null);
   const [showCancel, setShowCancel] = useState<Subscription | null>(null);
   const [showSplit, setShowSplit] = useState<Subscription | null>(null); 
 
+  // Delete States
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const [selectedSubs, setSelectedSubs] = useState<string[]>([]);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteType, setDeleteType] = useState<'bulk' | 'split'>('bulk');
+  const [targetSplitId, setTargetSplitId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // 🌟 1. Debounce Logic (Search type karne ke baad 500ms wait)
+  // 🌟 1. Debounce Logic
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(search);
@@ -157,152 +159,124 @@ export function Subscriptions() {
     return () => clearTimeout(handler);
   }, [search]);
 
-  // 🌟 2. Backend se Data Load karna (Search + Pagination + Filter)
-  const loadSubscriptions = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await api.getSubscriptions({
-        search: debouncedSearch,
-        status: filterStatus,
-        page: currentPage,
-        limit: 10,
-      });
-      
-      setSubs(res.data);
-      setTotalPages(res.totalPages);
-      setTotalItems(res.totalItems);
-    } catch {
-      setError('Could not load subscriptions. Check your connection and try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, [debouncedSearch, filterStatus, currentPage]);
+  // 🌟 2. FETCH SUBSCRIPTIONS (useQuery)
+  const { data: subsData, isLoading: loading, isError: error, refetch } = useQuery({
+    queryKey: ['subscriptions', debouncedSearch, filterStatus, currentPage],
+    queryFn: () => api.getSubscriptions({ search: debouncedSearch, status: filterStatus, page: currentPage, limit: 5 }),
+    placeholderData: keepPreviousData, // Smooth pagination
+  });
 
-  useEffect(() => {
-    void loadSubscriptions();
-  }, [loadSubscriptions]);
+  const subs = subsData?.data || [];
+  const totalPages = subsData?.totalPages || 1;
+  const totalItems = subsData?.totalItems || 0;
 
-  const loadSharedSubs = useCallback(async () => {
-    setLoadingShared(true);
-    try {
-      const data = await api.getSharedSubscriptions();
-      setSharedSubs(data);
-    } catch {
-      showToast('error', 'Could not load shared subscriptions.');
-    } finally {
-      setLoadingShared(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === 'shared') {
-      void loadSharedSubs();
-    }
-  }, [activeTab, loadSharedSubs]);
+  // 🌟 3. FETCH SHARED SUBSCRIPTIONS (useQuery)
+  const { data: sharedSubs = [], isLoading: loadingShared } = useQuery({
+    queryKey: ['sharedSubscriptions'],
+    queryFn: () => api.getSharedSubscriptions(),
+    enabled: activeTab === 'shared', // Sirf tab fetch ho jab tab open ho
+  });
 
   useEffect(() => {
     setSelectedSubs([]);
   }, [search, filterStatus, activeTab, currentPage]);
 
-  const handleAdd = async (data: SubscriptionFormData) => {
-    try {
-      await api.createSubscription(data);
-      await loadSubscriptions();
+  // 🌟 4. MUTATIONS
+  const addMutation = useMutation({
+    mutationFn: (data: SubscriptionFormData) => api.createSubscription(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
       showToast('success', 'Subscription added successfully');
       setShowAdd(false);
-    } catch {
-      showToast('error', 'Could not add subscription. Please try again.');
-    }
-  };
+    },
+    onError: () => showToast('error', 'Could not add subscription.')
+  });
 
-  const handleEdit = async (data: SubscriptionFormData) => {
-    if (!showEdit) return;
-    try {
-      await api.updateSubscription(showEdit.id, data);
-      await loadSubscriptions();
+  const editMutation = useMutation({
+    mutationFn: (data: SubscriptionFormData) => showEdit ? api.updateSubscription(showEdit.id, data) : Promise.reject(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
       showToast('success', 'Subscription updated successfully');
       setShowEdit(null);
-    } catch {
-      showToast('error', 'Could not update subscription. Please try again.');
-    }
-  };
+    },
+    onError: () => showToast('error', 'Could not update subscription.')
+  });
 
-  const handleCancel = async (data: CancelFormData) => {
-    if (!showCancel) return;
-    try {
-      await api.cancelSubscription(showCancel.id, data.cancellationDate, data.cancellationReason || '');
-      await loadSubscriptions();
-      showToast('success', `${showCancel.name} moved to Graveyard`);
+  const cancelMutation = useMutation({
+    mutationFn: (data: CancelFormData) => showCancel ? api.cancelSubscription(showCancel.id, data.cancellationDate, data.cancellationReason || '') : Promise.reject(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+      showToast('success', `${showCancel?.name} moved to Graveyard`);
       setShowCancel(null);
-    } catch {
-      showToast('error', 'Could not cancel this subscription. Please try again.');
-    }
-  };
+    },
+    onError: () => showToast('error', 'Could not cancel subscription.')
+  });
 
-  const handleSplit = async (id: string, sharedWith: { email: string; amountOwed: number; hasPaid: boolean }[]) => {
-    try {
-      await api.splitSubscription(id, sharedWith);
-      await loadSubscriptions();
+  const splitMutation = useMutation({
+    mutationFn: (payload: { id: string, sharedWith: any[] }) => api.splitSubscription(payload.id, payload.sharedWith),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
       showToast('success', 'Subscription shared successfully');
       setShowSplit(null);
-    } catch {
-      showToast('error', 'Could not share this subscription. Please try again.');
-    }
-  };
+    },
+    onError: () => showToast('error', 'Could not share subscription.')
+  });
 
-  const handleAccept = async (splitId: string) => {
-    try {
-      await api.acceptSplit(splitId);
+  const acceptSplitMutation = useMutation({
+    mutationFn: (id: string) => api.acceptSplit(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sharedSubscriptions'] });
       showToast('success', 'Invitation accepted!');
-      void loadSharedSubs();
-    } catch {
-      showToast('error', 'Could not accept invitation.');
-    }
+    },
+    onError: () => showToast('error', 'Could not accept invitation.')
+  });
+
+  // 🌟 FIXED HANDLERS (Ab yeh Promise<void> return karenge)
+  const handleAdd = async (data: SubscriptionFormData): Promise<void> => {
+    await addMutation.mutateAsync(data);
   };
 
-  const handleRemoveSplit = async (splitId: string) => {
-    if (!window.confirm('Are you sure you want to remove this shared subscription?')) return;
+  const handleEdit = async (data: SubscriptionFormData): Promise<void> => {
+    await editMutation.mutateAsync(data);
+  };
+
+  const handleCancel = async (data: CancelFormData): Promise<void> => {
+    await cancelMutation.mutateAsync(data);
+  };
+
+  const handleSplit = (id: string, sharedWith: any[]) => splitMutation.mutate({ id, sharedWith });
+  const handleAccept = (id: string) => acceptSplitMutation.mutate(id);
+
+  const toggleSelectSub = (id: string) => setSelectedSubs(prev => prev.includes(id) ? prev.filter(subId => subId !== id) : [...prev, id]);
+  const toggleSelectAll = () => selectedSubs.length === subs.length ? setSelectedSubs([]) : setSelectedSubs(subs.map((s: any) => s.id));
+
+  const triggerBulkDelete = () => { if (selectedSubs.length > 0) { setDeleteType('bulk'); setDeleteModalOpen(true); } };
+  const triggerRemoveSplit = (splitId: string) => { setTargetSplitId(splitId); setDeleteType('split'); setDeleteModalOpen(true); };
+
+  const executeDelete = async () => {
+    setIsDeleting(true);
     try {
-      await api.removeSplit(splitId);
-      showToast('success', 'Removed successfully');
-      void loadSharedSubs();
+      if (deleteType === 'bulk') {
+        await Promise.all(selectedSubs.map(id => api.deleteSubscription(id)));
+        queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+        showToast('success', `${selectedSubs.length} subscription(s) deleted permanently`);
+        setIsDeleteMode(false);
+        setSelectedSubs([]);
+      } else if (deleteType === 'split' && targetSplitId) {
+        await api.removeSplit(targetSplitId);
+        queryClient.invalidateQueries({ queryKey: ['sharedSubscriptions'] });
+        showToast('success', 'Removed successfully');
+      }
+      setDeleteModalOpen(false);
     } catch {
-      showToast('error', 'Could not remove subscription.');
+      showToast('error', 'Could not complete deletion.');
+    } finally {
+      setIsDeleting(false);
+      setTargetSplitId(null);
     }
   };
 
-  const toggleSelectSub = (id: string) => {
-    setSelectedSubs((prev) =>
-      prev.includes(id) ? prev.filter((subId) => subId !== id) : [...prev, id]
-    );
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedSubs.length === subs.length) {
-      setSelectedSubs([]);
-    } else {
-      setSelectedSubs(subs.map((s) => s.id));
-    }
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedSubs.length === 0) return;
-    try {
-      await Promise.all(selectedSubs.map((id) => api.deleteSubscription(id)));
-      await loadSubscriptions();
-      showToast('success', `${selectedSubs.length} subscription(s) deleted permanently`);
-      setIsDeleteMode(false);
-      setSelectedSubs([]);
-    } catch {
-      showToast('error', 'Could not delete subscriptions. Please try again.');
-    }
-  };
-
-  const exitDeleteMode = () => {
-    setIsDeleteMode(false);
-    setSelectedSubs([]);
-  };
+  const exitDeleteMode = () => { setIsDeleteMode(false); setSelectedSubs([]); };
 
   return (
     <div className="min-w-0 space-y-6 text-text-primary transition-colors duration-300">
@@ -405,22 +379,23 @@ export function Subscriptions() {
           {(!loading && !error) && (
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-1 pb-5 mb-2 border-b-2 border-border/80 transition-all">
               {isDeleteMode ? (
-                <>
+                <div className="w-full flex flex-wrap items-center justify-between gap-3 bg-rose-500/5 p-3 rounded-2xl border border-rose-500/20">
                   <p className="text-sm font-bold text-rose-500 flex items-center gap-2">
-                    <Trash2 size={16} /> {selectedSubs.length} selected
+                    <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+                    {selectedSubs.length} item(s) selected
                   </p>
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <button onClick={toggleSelectAll} className="h-9 px-4 rounded-xl border border-border/60 bg-bg-surface text-xs font-bold text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-all">
                       {selectedSubs.length === subs.length ? 'Deselect All' : 'Select All'}
                     </button>
-                    <button onClick={exitDeleteMode} className="h-9 px-4 rounded-xl border border-border/60 bg-bg-surface text-xs font-bold text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-all">
+                    <button onClick={exitDeleteMode} className="h-9 px-4 rounded-xl border border-transparent text-xs font-bold text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-all">
                       Cancel
                     </button>
-                    <Button variant="glow" onClick={handleBulkDelete} disabled={selectedSubs.length === 0} className="h-9 px-4 text-xs bg-rose-500 hover:bg-rose-600 border-none shadow-rose-500/20 hover:shadow-rose-500/40 disabled:opacity-50">
-                      Delete Selected ({selectedSubs.length})
+                    <Button variant="danger" onClick={triggerBulkDelete} disabled={selectedSubs.length === 0} className="h-9 px-5 text-xs bg-rose-500 hover:bg-rose-600 text-white border-none shadow-md shadow-rose-500/20 disabled:opacity-50">
+                      Delete Selected
                     </Button>
                   </div>
-                </>
+                </div>
               ) : (
                 <>
                   <p className="text-xs font-semibold text-text-secondary">
@@ -435,7 +410,7 @@ export function Subscriptions() {
                     {subs.length > 0 && (
                       <button onClick={() => setIsDeleteMode(true)} className="group relative flex items-center gap-2 rounded-xl bg-rose-500/10 px-4 py-2 text-xs font-bold text-rose-500 transition-all duration-300 hover:bg-rose-500 hover:text-white hover:shadow-[0_0_20px_rgba(244,63,94,0.4)] border border-rose-500/20 hover:border-rose-500">
                         <Trash2 size={14} className="transition-transform group-hover:scale-110 group-hover:-rotate-12" />
-                        Delete Subscriptions
+                        Select to Delete
                       </button>
                     )}
                   </div>
@@ -449,30 +424,30 @@ export function Subscriptions() {
           )}
           {!loading && error && (
             <div role="alert" className="glass-card flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div><h2 className="font-semibold text-text-primary">Unable to load subscriptions</h2><p className="mt-1 text-sm text-text-secondary">{error}</p></div>
-              <Button variant="ghost" icon={<RefreshCw className="h-4 w-4" />} onClick={() => void loadSubscriptions()}>Retry</Button>
+              <div><h2 className="font-semibold text-text-primary">Unable to load subscriptions</h2><p className="mt-1 text-sm text-text-secondary">Check your connection and try again.</p></div>
+              <Button variant="ghost" icon={<RefreshCw className="h-4 w-4" />} onClick={() => refetch()}>Retry</Button>
             </div>
           )}
 
           {!loading && !error && (
             <div className="flex flex-col gap-5">
               <AnimatePresence mode="popLayout">
-                {subs.map((sub, index) => {
+                {subs.map((sub: any, index: number) => {
                   const isSelected = selectedSubs.includes(sub.id);
                   return (
                     <motion.div key={sub.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: Math.min(index * 0.05, 0.2), duration: 0.3 }} className="w-full">
                       <TiltCard onClick={() => isDeleteMode && toggleSelectSub(sub.id)} isSelectable={isDeleteMode}>
-                        <div className={`group relative flex flex-col xl:flex-row w-full bg-bg-surface border shadow-sm transition-all duration-300 rounded-[24px] overflow-hidden ${isSelected ? 'border-rose-500 ring-2 ring-rose-500/20 shadow-rose-500/10' : 'border-border/60 hover:shadow-xl hover:border-emerald-500/30'}`}>
+                        <div className={`group relative flex flex-col xl:flex-row w-full bg-bg-surface border shadow-sm transition-all duration-300 rounded-[24px] overflow-hidden ${isSelected ? 'border-rose-500 ring-2 ring-rose-500/20 shadow-[0_0_30px_rgba(244,63,94,0.15)] bg-rose-500/5' : 'border-border/60 hover:shadow-xl hover:border-emerald-500/30'}`}>
                           
                           {isDeleteMode && (
                             <div className="absolute top-1/2 -translate-y-1/2 left-5 z-20">
-                              <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-rose-500 border-rose-500 text-white' : 'border-border bg-bg-surface/80 backdrop-blur-sm'}`}>
-                                {isSelected && <CheckCircle2 size={14} />}
+                              <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${isSelected ? 'bg-rose-500 border-rose-500 text-white scale-110 shadow-lg shadow-rose-500/30' : 'border-slate-300 dark:border-slate-600 bg-bg-surface/80 backdrop-blur-sm hover:border-rose-400'}`}>
+                                {isSelected && <Check size={16} strokeWidth={3} />}
                               </div>
                             </div>
                           )}
 
-                          <div className={`flex-1 p-5 flex items-center gap-4 relative transition-opacity min-w-0 ${isDeleteMode ? 'pl-14' : 'pl-5'}`}>
+                          <div className={`flex-1 p-5 flex items-center gap-4 relative transition-opacity min-w-0 ${isDeleteMode ? 'pl-16' : 'pl-5'}`}>
                             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                             <div className="shrink-0"><SubscriptionLogo name={sub.name} websiteUrl={sub.websiteUrl} category={sub.category} className="h-12 w-12 rounded-xl" /></div>
                             <div className="flex-1 min-w-0">
@@ -480,7 +455,7 @@ export function Subscriptions() {
                               <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mt-0.5">{getCategoryLabel(sub.category)}</p>
                             </div>
                             <div className="flex flex-col items-end gap-1 shrink-0">
-                              {(sub as any).isShared && (sub as any).sharedWith?.length > 0 && (
+                              {sub.isShared && sub.sharedWith?.length > 0 && (
                                 <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-md"><Users size={12} /> Shared</span>
                               )}
                             </div>
@@ -494,34 +469,30 @@ export function Subscriptions() {
                           <div className="xl:w-[160px] p-5 flex flex-row xl:flex-col items-center justify-between xl:justify-center xl:border-l-2 border-t-2 xl:border-t-0 border-slate-300 dark:border-slate-600">
                             <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider xl:mb-1.5">Renewal</p>
                             <div className="text-right xl:text-center">
-                              {/* ✅ FIX: renewalDate undefined safe */}
                               <p className="text-sm font-bold text-text-primary">
-                                {sub.status === 'active'
-                                  ? (sub.renewalDate ? formatDate(sub.renewalDate) : 'N/A')
-                                  : 'Cancelled'}
+                                {sub.status === 'active' ? (sub.renewalDate ? formatDate(sub.renewalDate) : 'N/A') : 'Cancelled'}
                               </p>
-                              {/* ✅ FIX: getDaysUntilRenewal safe */}
                               {sub.status === 'active' && sub.renewalDate && (
-                                <p className="text-[10px] font-semibold text-emerald-500 mt-0.5">
-                                  in {getDaysUntilRenewal(sub.renewalDate)} days
-                                </p>
+                                <p className="text-[10px] font-semibold text-emerald-500 mt-0.5">in {getDaysUntilRenewal(sub.renewalDate)} days</p>
                               )}
                             </div>
                           </div>
 
-                          <div className={`xl:w-[240px] p-4 flex items-center justify-center gap-2 xl:border-l-2 border-t-2 xl:border-t-0 border-slate-300 dark:border-slate-600 transition-opacity ${isDeleteMode ? 'opacity-40 pointer-events-none' : ''}`}>
-                            <button onClick={(e) => { e.stopPropagation(); setShowEdit(sub); }} className="flex-1 flex flex-col items-center justify-center gap-1.5 py-2.5 rounded-xl text-teal-700 bg-teal-500/10 hover:bg-teal-500/20 dark:text-teal-400 transition-all">
-                              <Pencil size={16} /><span className="text-[10px] font-bold">Edit</span>
-                            </button>
-                            <div className="w-[2px] h-8 bg-slate-300 dark:bg-slate-600 hidden xl:block" />
-                            <button onClick={(e) => { e.stopPropagation(); setShowSplit(sub); }} disabled={sub.status !== 'active'} className="flex-1 flex flex-col items-center justify-center gap-1.5 py-2.5 rounded-xl text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 dark:text-emerald-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-                              <Users size={16} /><span className="text-[10px] font-bold">Split</span>
-                            </button>
-                            <div className="w-[2px] h-8 bg-slate-300 dark:bg-slate-600 hidden xl:block" />
-                            <button onClick={(e) => { e.stopPropagation(); setShowCancel(sub); }} disabled={sub.status !== 'active'} className="flex-1 flex flex-col items-center justify-center gap-1.5 py-2.5 rounded-xl text-slate-500 bg-slate-500/10 hover:bg-slate-500/20 dark:text-slate-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-                              <Ban size={16} /><span className="text-[10px] font-bold">Cancel</span>
-                            </button>
-                          </div>
+                          {!isDeleteMode && (
+                            <div className={`xl:w-[240px] p-4 flex items-center justify-center gap-2 xl:border-l-2 border-t-2 xl:border-t-0 border-slate-300 dark:border-slate-600 transition-opacity`}>
+                              <button onClick={(e) => { e.stopPropagation(); setShowEdit(sub); }} className="flex-1 flex flex-col items-center justify-center gap-1.5 py-2.5 rounded-xl text-blue-600 bg-blue-500/10 hover:bg-blue-500/20 dark:text-blue-400 transition-all">
+                                <Pencil size={16} /><span className="text-[10px] font-bold">Edit</span>
+                              </button>
+                              <div className="w-[2px] h-8 bg-slate-300 dark:bg-slate-600 hidden xl:block" />
+                              <button onClick={(e) => { e.stopPropagation(); setShowSplit(sub); }} disabled={sub.status !== 'active'} className="flex-1 flex flex-col items-center justify-center gap-1.5 py-2.5 rounded-xl text-violet-600 bg-violet-500/10 hover:bg-violet-500/20 dark:text-violet-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                                <Users size={16} /><span className="text-[10px] font-bold">Split</span>
+                              </button>
+                              <div className="w-[2px] h-8 bg-slate-300 dark:bg-slate-600 hidden xl:block" />
+                              <button onClick={(e) => { e.stopPropagation(); setShowCancel(sub); }} disabled={sub.status !== 'active'} className="flex-1 flex flex-col items-center justify-center gap-1.5 py-2.5 rounded-xl text-amber-600 bg-amber-500/10 hover:bg-amber-500/20 dark:text-amber-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                                <Ban size={16} /><span className="text-[10px] font-bold">Cancel</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </TiltCard>
                     </motion.div>
@@ -539,24 +510,15 @@ export function Subscriptions() {
             </div>
           )}
 
-          {/* 🌟 PAGINATION CONTROLS 🌟 */}
           {!loading && !error && totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-border/50 pt-5 mt-6">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="flex items-center gap-1 px-4 py-2 rounded-lg border border-border bg-bg-surface text-sm font-bold text-text-primary disabled:opacity-50 hover:bg-bg-hover transition-all"
-              >
+              <button onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="flex items-center gap-1 px-4 py-2 rounded-lg border border-border bg-bg-surface text-sm font-bold text-text-primary disabled:opacity-50 hover:bg-bg-hover transition-all">
                 <ChevronLeft size={16} /> Previous
               </button>
               <span className="text-sm font-bold text-text-secondary">
                 Page {currentPage} of {totalPages}
               </span>
-              <button
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="flex items-center gap-1 px-4 py-2 rounded-lg border border-border bg-bg-surface text-sm font-bold text-text-primary disabled:opacity-50 hover:bg-bg-hover transition-all"
-              >
+              <button onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="flex items-center gap-1 px-4 py-2 rounded-lg border border-border bg-bg-surface text-sm font-bold text-text-primary disabled:opacity-50 hover:bg-bg-hover transition-all">
                 Next <ChevronRight size={16} />
               </button>
             </div>
@@ -587,7 +549,7 @@ export function Subscriptions() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {sharedSubs.map((split) => {
+              {sharedSubs.map((split: any) => {
                 const sub = split.subscription;
                 const owner = split.owner;
                 
@@ -644,11 +606,7 @@ export function Subscriptions() {
                           </button>
                         )}
                         
-                        <button 
-                          onClick={() => handleRemoveSplit(split._id)} 
-                          title="Leave / Remove"
-                          className="p-2 text-rose-500 bg-rose-500/10 hover:bg-rose-500 hover:text-white rounded-lg transition-colors"
-                        >
+                        <button onClick={() => triggerRemoveSplit(split._id)} title="Leave / Remove" className="p-2 text-rose-500 bg-rose-500/10 hover:bg-rose-500 hover:text-white rounded-lg transition-colors">
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -681,6 +639,55 @@ export function Subscriptions() {
       {showSplit && (
         <SplitModal isOpen={true} onClose={() => setShowSplit(null)} sub={showSplit} onSave={handleSplit} />
       )}
+
+      {/* 🌟 PREMIUM DELETE CONFIRMATION MODAL 🌟 */}
+      <Modal isOpen={deleteModalOpen} onClose={() => !isDeleting && setDeleteModalOpen(false)} title="" size="sm">
+        <div className="pt-2 pb-4 text-center">
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-rose-500/20 to-rose-500/5 border border-rose-500/20 shadow-[0_0_40px_rgba(244,63,94,0.15)] relative"
+          >
+            <div className="absolute inset-0 rounded-full bg-rose-500/20 animate-ping opacity-20" />
+            <AlertTriangle className="h-9 w-9 text-rose-500" strokeWidth={2} />
+          </motion.div>
+
+          <h3 className="text-2xl font-black text-text-primary mb-3 tracking-tight">
+            {deleteType === 'bulk' ? `Delete ${selectedSubs.length} item(s)?` : 'Remove this subscription?'}
+          </h3>
+          
+          <p className="text-sm text-text-secondary leading-relaxed px-2 mb-8">
+            {deleteType === 'bulk' 
+              ? "This action is permanent and cannot be undone. All selected subscriptions will be completely removed from your account."
+              : "You will lose access to this shared subscription. The owner will be notified that you left."}
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button 
+              variant="ghost" 
+              onClick={() => setDeleteModalOpen(false)} 
+              disabled={isDeleting} 
+              className="w-full sm:w-auto min-w-[130px] h-12 rounded-xl font-bold bg-bg-hover hover:bg-border/50 text-text-secondary"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={executeDelete} 
+              disabled={isDeleting} 
+              className="w-full sm:w-auto min-w-[130px] h-12 rounded-xl font-bold bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white shadow-lg shadow-rose-500/30"
+            >
+              {isDeleting ? (
+                <span className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4 animate-spin" /> Deleting...
+                </span>
+              ) : (
+                'Yes, Delete'
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -881,8 +888,8 @@ function CancelForm({
   return (
     <div className="space-y-6 pt-4 pb-2">
       <div className="text-center">
-        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-rose-500/10 border border-rose-500/20">
-          <Ban className="h-8 w-8 text-rose-500" />
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10 border border-amber-500/20">
+          <Ban className="h-8 w-8 text-amber-500" />
         </div>
         <h3 className="text-xl font-black text-text-primary mb-2">Are you sure?</h3>
         <p className="text-sm text-text-secondary leading-relaxed">Are you sure you want to bury this?🪦</p>
@@ -892,7 +899,7 @@ function CancelForm({
         <Button variant="ghost" onClick={onCancel} disabled={isSubmitting} className="w-full sm:w-auto min-w-[120px]">
           Keep it
         </Button>
-        <Button variant="danger" onClick={handleConfirm} disabled={isSubmitting} className="w-full sm:w-auto min-w-[120px] bg-rose-500 hover:bg-rose-600 text-white">
+        <Button variant="danger" onClick={handleConfirm} disabled={isSubmitting} className="w-full sm:w-auto min-w-[120px] bg-amber-500 hover:bg-amber-600 text-white">
           {isSubmitting ? 'Cancelling...' : 'Confirm Cancel'}
         </Button>
       </div>

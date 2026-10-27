@@ -24,7 +24,6 @@ import './auth.css';
 
 type AuthMode = 'login' | 'signup';
 
-// 🌟 Updated Schema to accept Username and Confirm Password (optional for Login)
 const authSchema = z.object({
   email: z.string().trim().min(1, 'Please enter your email address').email("That email doesn't look right"),
   username: z.string().optional(),
@@ -34,7 +33,6 @@ const authSchema = z.object({
 
 type AuthValues = z.infer<typeof authSchema>;
 
-// 🌟 Updated createUser to take the username
 function createUser(email: string, name?: string, avatar?: string) {
   const cleanEmail = email.trim().toLowerCase();
   return {
@@ -67,7 +65,7 @@ const MagneticButton = ({ children, className, ...props }: any) => {
   const [isHovered, setIsHovered] = useState(false);
 
   const handleMouse = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (!ref.current) return;
+    if (!ref.current || window.innerWidth < 768) return; // Mobile par tilt disable
     const { clientX, clientY } = e;
     const { height, width, left, top } = ref.current.getBoundingClientRect();
     const middleX = clientX - (left + width / 2);
@@ -118,7 +116,7 @@ export function Login() {
   const glowBackground = useMotionTemplate`radial-gradient(circle at ${glowX} ${glowY}, rgba(139, 92, 246, 0.15), transparent 60%)`;
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!mainRef.current || reduceMotion) return;
+    if (!mainRef.current || reduceMotion || window.innerWidth < 768) return;
     const { left, top, width, height } = mainRef.current.getBoundingClientRect();
     mouseX.set((e.clientX - left) / width * 2 - 1);
     mouseY.set((e.clientY - top) / height * 2 - 1);
@@ -214,17 +212,14 @@ export function Login() {
         await login(values.email, values.password);
         finishSignIn(createUser(values.email));
       } else {
-        // 🌟 Validation for Signup fields
         if (!values.username || values.username.trim().length < 3) {
           throw new Error('Username must be at least 3 characters long.');
         }
         if (values.password !== values.confirmPassword) {
           throw new Error('Passwords do not match.');
         }
-
-        // Pass username as the 3rd argument
         await signup(values.email, values.password, values.username);
-        finishSignIn(createUser(values.email, values.username)); // Direct Login (Auto-fill name)
+        finishSignIn(createUser(values.email, values.username));
       }
     } catch (error: any) {
       const message = error instanceof Error ? error.message : 'Unable to authenticate. Please try again.';
@@ -256,7 +251,7 @@ export function Login() {
     <main
       ref={mainRef}
       onMouseMove={handleMouseMove}
-      className={`auth-page relative ${resolvedTheme === 'light' ? 'auth-light' : 'auth-dark'}`}
+      className={`auth-page relative min-h-screen flex flex-col lg:flex-row overflow-hidden ${resolvedTheme === 'light' ? 'auth-light' : 'auth-dark'}`}
       style={{ perspective: 1200 }}
     >
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
@@ -267,13 +262,14 @@ export function Login() {
 
       <DataRunners smoothX={smoothX} smoothY={smoothY} />
 
+      {/* 🌟 LEFT SCENE: Mobile par hide, Desktop par visible */}
       <section
-        className={`auth-scene ${submitError ? 'is-error' : ''} ${isSuccess ? 'is-success' : ''}`}
+        className={`auth-scene hidden lg:flex flex-1 relative ${submitError ? 'is-error' : ''} ${isSuccess ? 'is-success' : ''}`}
         aria-label="Subscription app animation"
       >
         <div className="auth-scene-overlay" />
 
-        <div className="scene-copy relative z-20">
+        <div className="scene-copy relative z-20 px-10 xl:px-20">
           <motion.div
             initial={reduceMotion ? false : { opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
@@ -287,7 +283,7 @@ export function Login() {
             initial={reduceMotion ? false : { opacity: 0, y: 25 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.1 }}
-            className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tighter text-slate-900 dark:text-white drop-shadow-lg"
+            className="text-5xl lg:text-6xl xl:text-7xl font-black tracking-tighter text-slate-900 dark:text-white drop-shadow-lg leading-[1.1]"
           >
             Your money.
             <br />
@@ -299,11 +295,11 @@ export function Login() {
             </span>
           </motion.h1>
 
-          <p className="relative z-20 text-slate-700 dark:text-slate-300 font-medium">
+          <p className="relative z-20 text-slate-700 dark:text-slate-300 font-medium mt-4 text-lg">
             Track recurring costs and upcoming renewals.
           </p>
 
-          <div className="scene-bottom-note">
+          <div className="scene-bottom-note mt-12">
             <span className="scene-note-line" />
             <span>LESS WASTE. MORE CONTROL.</span>
           </div>
@@ -312,33 +308,34 @@ export function Login() {
         <div className="scene-coordinate">SG — SUBSCRIPTION CONTROL</div>
       </section>
 
-      <section className="auth-panel relative z-30">
-        <div className="auth-panel-glow" />
+      {/* 🌟 RIGHT PANEL: Mobile par full width, Desktop par half */}
+      <section className="auth-panel relative z-30 flex-1 w-full flex flex-col justify-center items-center px-4 py-8 lg:py-12 lg:px-8 min-h-screen lg:min-h-0 bg-bg-base/50 lg:bg-transparent backdrop-blur-sm lg:backdrop-blur-none">
+        <div className="auth-panel-glow hidden lg:block" />
         <div className="auth-mobile-fog" />
 
-        <div className="auth-card-wrap" style={{ perspective: 1000 }}>
+        <div className="auth-card-wrap w-full max-w-[440px] mx-auto" style={{ perspective: 1000 }}>
           <AnimatePresence mode="wait">
             {isSuccess ? (
               <motion.div
                 key="success"
-                className="auth-success"
+                className="auth-success w-full p-6 sm:p-8 rounded-3xl bg-bg-elevated border border-border shadow-xl"
                 initial={reduceMotion ? false : { opacity: 0, y: 24, scale: 0.97 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: reduceMotion ? 0.15 : 0.45 }}
               >
                 <div className="success-beam" />
-                <div className="success-symbol">
+                <div className="success-symbol mx-auto">
                   <Check size={28} strokeWidth={2.2} />
                 </div>
-                <span className="auth-kicker">YOU'RE ALL SET</span>
-                <h2>{getGreeting()}.</h2>
-                <p>
+                <span className="auth-kicker text-center block mt-4">YOU'RE ALL SET</span>
+                <h2 className="text-center text-2xl font-bold mt-2">{getGreeting()}.</h2>
+                <p className="text-center text-text-secondary mt-2">
                   {successUser?.name
                     ? `Good to have you here, ${successUser.name}.`
                     : 'Your subscriptions are ready to manage.'}
                 </p>
-                <div className="success-loading">
+                <div className="success-loading mt-6 flex items-center justify-center gap-2">
                   <span />
                   Preparing your dashboard…
                 </div>
@@ -346,7 +343,7 @@ export function Login() {
             ) : (
               <motion.div
                 key="form"
-                className="auth-card relative"
+                className="auth-card relative w-full p-6 sm:p-8 rounded-3xl bg-bg-elevated border border-border shadow-xl"
                 style={{ 
                   rotateX: reduceMotion ? 0 : rotateX, 
                   rotateY: reduceMotion ? 0 : rotateY, 
@@ -382,7 +379,7 @@ export function Login() {
                     </motion.div>
                   </div>
 
-                  <div className="auth-card-top relative">
+                  <div className="auth-card-top relative mb-6">
                     <div className="flex items-center gap-2.5 sm:gap-3 mb-4 pr-6">
                       <div className="flex shrink-0 items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-black text-white shadow-lg" aria-hidden="true">
                         <Skull size={22} strokeWidth={2.5} className="sm:w-7 sm:h-7" />
@@ -398,14 +395,14 @@ export function Login() {
                       {mode === 'login' ? 'YOUR SUBSCRIPTIONS AWAIT' : 'START FRESH'}
                     </span>
                     
-                    <h2>
+                    <h2 className="text-xl sm:text-2xl font-bold mt-1">
                       {mode === 'login' ? `${getGreeting()}.` : 'Create your account'}
                     </h2>
                   </div>
 
                   <form onSubmit={onSubmit} noValidate autoComplete="off" className="auth-form flex flex-col gap-4">
                     
-                    {/* 🌟 USERNAME FIELD (Signup Only) */}
+                    {/* 🌟 USERNAME (Signup Only) */}
                     {mode === 'signup' && (
                       <motion.div
                         className={`auth-field ${errors.username ? 'has-error' : ''}`}
@@ -413,25 +410,27 @@ export function Login() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: reduceMotion ? 0 : 0.1 }}
                       >
-                        <User className="auth-field-icon" size={17} />
+                        <User className="auth-field-icon" size={18} />
                         <input
                           id="auth-username"
                           type="text"
                           autoComplete="off" 
                           placeholder=" "
                           {...register('username')}
+                          className="h-12 text-base" // 🌟 Mobile touch friendly
                         />
                         <label htmlFor="auth-username">Username</label>
                       </motion.div>
                     )}
 
+                    {/* 🌟 EMAIL */}
                     <motion.div
                       className={`auth-field ${errors.email ? 'has-error' : ''} ${touchedFields.email && !errors.email && email ? 'is-valid' : ''}`}
                       initial={reduceMotion ? false : { opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: reduceMotion ? 0 : 0.12 }}
                     >
-                      <Mail className="auth-field-icon" size={17} />
+                      <Mail className="auth-field-icon" size={18} />
                       <input
                         id="auth-email"
                         type="email"
@@ -439,6 +438,7 @@ export function Login() {
                         placeholder=" "
                         aria-invalid={!!errors.email}
                         {...register('email')}
+                        className="h-12 text-base" // 🌟 Mobile touch friendly
                       />
                       <label htmlFor="auth-email">Email address</label>
                       {touchedFields.email && !errors.email && email && (
@@ -460,13 +460,14 @@ export function Login() {
                       )}
                     </AnimatePresence>
 
+                    {/* 🌟 PASSWORD */}
                     <motion.div
                       className={`auth-field ${errors.password ? 'has-error' : ''}`}
                       initial={reduceMotion ? false : { opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: reduceMotion ? 0 : 0.2 }}
                     >
-                      <LockKeyhole className="auth-field-icon" size={17} />
+                      <LockKeyhole className="auth-field-icon" size={18} />
                       <input
                         id="auth-password"
                         type={showPassword ? 'text' : 'password'}
@@ -474,6 +475,7 @@ export function Login() {
                         placeholder=" "
                         aria-invalid={!!errors.password}
                         {...register('password')}
+                        className="h-12 text-base" // 🌟 Mobile touch friendly
                       />
                       <label htmlFor="auth-password">Password</label>
                       <button
@@ -481,7 +483,7 @@ export function Login() {
                         type="button"
                         onClick={() => setShowPassword((value) => !value)}
                       >
-                        {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </motion.div>
 
@@ -499,7 +501,7 @@ export function Login() {
                       )}
                     </AnimatePresence>
 
-                    {/* 🌟 CONFIRM PASSWORD FIELD (Signup Only) */}
+                    {/* 🌟 CONFIRM PASSWORD (Signup Only) */}
                     {mode === 'signup' && (
                       <motion.div
                         className={`auth-field ${errors.confirmPassword ? 'has-error' : ''}`}
@@ -507,13 +509,14 @@ export function Login() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: reduceMotion ? 0 : 0.25 }}
                       >
-                        <ShieldCheck className="auth-field-icon" size={17} />
+                        <ShieldCheck className="auth-field-icon" size={18} />
                         <input
                           id="auth-confirm-password"
                           type={showConfirmPassword ? 'text' : 'password'}
                           autoComplete="new-password" 
                           placeholder=" "
                           {...register('confirmPassword')}
+                          className="h-12 text-base" // 🌟 Mobile touch friendly
                         />
                         <label htmlFor="auth-confirm-password">Confirm Password</label>
                         <button
@@ -521,12 +524,12 @@ export function Login() {
                           type="button"
                           onClick={() => setShowConfirmPassword((value) => !value)}
                         >
-                          {showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                          {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                         </button>
                       </motion.div>
                     )}
 
-                    <div className="min-h-[24px]">
+                    <div className="min-h-[24px] mt-1">
                       {mode === 'signup' && password.length > 0 && (
                         <motion.div
                           className="password-strength"
@@ -559,7 +562,7 @@ export function Login() {
                               setResetError('');
                               setResetSuccess('');
                             }}
-                            className="h-5 px-2 flex items-center justify-center rounded-full text-[10px] font-bold leading-none text-violet-600 bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 active:scale-95 dark:text-violet-300 dark:bg-violet-900/30 dark:border-violet-700/50 dark:hover:bg-violet-800/40 transition-all"
+                            className="h-6 px-3 flex items-center justify-center rounded-full text-[11px] font-bold leading-none text-violet-600 bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 active:scale-95 dark:text-violet-300 dark:bg-violet-900/30 dark:border-violet-700/50 dark:hover:bg-violet-800/40 transition-all"
                           >
                             Reset it
                           </button>
@@ -608,14 +611,14 @@ export function Login() {
                           const currentEmail = watch('email');
                           reset({ email: currentEmail, username: '', password: '', confirmPassword: '' });
                         }}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 rounded-xl font-bold transition-all hover:bg-violet-200 dark:hover:bg-violet-900/50"
+                        className="w-full flex items-center justify-center gap-2 py-3 bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 rounded-xl text-sm font-bold transition-all hover:bg-violet-200 dark:hover:bg-violet-900/50"
                       >
                         Create Account with {watch('email')} <ArrowRight size={16} />
                       </motion.button>
                     )}
 
                     <MagneticButton
-                      className="auth-submit w-full h-[56px] rounded-2xl mt-1"
+                      className="auth-submit w-full h-14 sm:h-[56px] rounded-2xl mt-2 text-base font-bold"
                       type="submit"
                       disabled={isLoading}
                     >
@@ -628,25 +631,26 @@ export function Login() {
                       ) : (
                         <>
                           {mode === 'login' ? 'Log in' : 'Create account'}
-                          <ArrowRight size={17} />
+                          <ArrowRight size={18} />
                         </>
                       )}
                     </MagneticButton>
                   </form>
 
-                  <div className="auth-mode-switch">
-                    <span>
+                  <div className="auth-mode-switch mt-6 flex items-center justify-center gap-2 text-sm">
+                    <span className="text-text-secondary">
                       {mode === 'login' ? 'New around here?' : 'Already have an account?'}
                     </span>
                     <button
                       type="button"
                       onClick={() => changeMode(mode === 'login' ? 'signup' : 'login')}
+                      className="font-bold text-violet-500 hover:text-violet-600 transition-colors"
                     >
                       {mode === 'login' ? 'Sign up' : 'Log in'}
                     </button>
                   </div>
 
-                  <div className="auth-trust-note">
+                  <div className="auth-trust-note mt-6 flex items-center justify-center gap-2 text-xs text-text-muted">
                     <ShieldCheck size={14} />
                     <span>Your money. Your choices. Your peace of mind.</span>
                   </div>
@@ -656,13 +660,14 @@ export function Login() {
           </AnimatePresence>
         </div>
 
-        <div className="auth-panel-footer">
+        <div className="auth-panel-footer mt-8 hidden lg:flex items-center justify-center gap-2 text-xs text-text-muted">
           <span>© {new Date().getFullYear()} Subscription Graveyard</span>
           <span className="footer-separator">·</span>
           <span>Your subscriptions, under control.</span>
         </div>
       </section>
 
+      {/* 🌟 RESET PASSWORD MODAL */}
       <Modal 
         isOpen={showReset} 
         onClose={() => {
@@ -679,20 +684,20 @@ export function Login() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}
-                className="space-y-5 pt-2"
+                className="space-y-4 sm:space-y-5 pt-2"
               >
-                <div className="text-center mb-6">
+                <div className="text-center mb-4 sm:mb-6">
                   <div className="w-12 h-12 bg-accent-blue/10 rounded-full flex items-center justify-center mx-auto mb-3">
                     <Mail className="text-accent-blue w-6 h-6" />
                   </div>
-                  <h3 className="text-lg font-bold text-text-primary">Forgot Password?</h3>
-                  <p className="text-sm text-text-secondary mt-1">
+                  <h3 className="text-base sm:text-lg font-bold text-text-primary">Forgot Password?</h3>
+                  <p className="text-xs sm:text-sm text-text-secondary mt-1 px-2">
                     Enter your registered email. We'll send you a secure code.
                   </p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-text-primary ml-1">
+                  <label className="block text-xs sm:text-sm font-medium text-text-primary ml-1">
                     Email Address
                   </label>
                   <input
@@ -702,7 +707,7 @@ export function Login() {
                     placeholder="example@email.com"
                     autoComplete="off"
                     disabled={isSendingCode}
-                    className="w-full p-3 border border-border rounded-xl bg-bg-surface text-text-primary placeholder:text-text-muted focus:ring-2 focus:ring-accent-blue/30 outline-none transition-all disabled:opacity-50"
+                    className="w-full p-3 h-12 border border-border rounded-xl bg-bg-surface text-sm text-text-primary placeholder:text-text-muted focus:ring-2 focus:ring-accent-blue/30 outline-none transition-all disabled:opacity-50"
                   />
                 </div>
 
@@ -722,7 +727,7 @@ export function Login() {
                       setIsSendingCode(false);
                     }
                   }}
-                  className="w-full flex items-center justify-center gap-2 py-3 mt-2 bg-accent-blue text-white rounded-xl font-semibold hover:brightness-110 transition-all shadow-lg shadow-accent-blue/20 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 py-3 h-12 mt-2 bg-accent-blue text-white rounded-xl text-sm font-semibold hover:brightness-110 transition-all shadow-lg shadow-accent-blue/20 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isSendingCode ? (
                     <>
@@ -741,9 +746,9 @@ export function Login() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}
-                className="space-y-5 pt-2"
+                className="space-y-4 sm:space-y-5 pt-2"
               >
-                <div className="text-center mb-6">
+                <div className="text-center mb-4 sm:mb-6">
                   <motion.div 
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
@@ -752,8 +757,8 @@ export function Login() {
                   >
                     <ShieldCheck className="text-success w-6 h-6" />
                   </motion.div>
-                  <h3 className="text-lg font-bold text-text-primary">Check Your Email</h3>
-                  <p className="text-sm text-text-secondary mt-1">
+                  <h3 className="text-base sm:text-lg font-bold text-text-primary">Check Your Email</h3>
+                  <p className="text-xs sm:text-sm text-text-secondary mt-1 px-2 break-all">
                     We sent a 6-digit code to <strong className="text-text-primary">{resetEmail}</strong>.
                   </p>
                 </div>
@@ -764,7 +769,7 @@ export function Login() {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
-                      className="p-3 bg-success/10 border border-success/20 rounded-xl text-sm text-success text-center font-medium"
+                      className="p-3 bg-success/10 border border-success/20 rounded-xl text-xs sm:text-sm text-success text-center font-medium"
                     >
                       {resetSuccess}
                     </motion.div>
@@ -772,7 +777,7 @@ export function Login() {
                 </AnimatePresence>
 
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-text-primary ml-1">
+                  <label className="block text-xs sm:text-sm font-medium text-text-primary ml-1">
                     6-Digit Code
                   </label>
                   <input
@@ -784,12 +789,12 @@ export function Login() {
                     disabled={isUpdatingPassword}
                     autoComplete="new-password"
                     spellCheck={false}
-                    className="w-full p-3 border border-border rounded-xl bg-bg-surface text-text-primary text-center tracking-[0.5em] text-xl font-bold focus:ring-2 focus:ring-accent-blue/30 outline-none transition-all disabled:opacity-50"
+                    className="w-full p-3 h-12 border border-border rounded-xl bg-bg-surface text-text-primary text-center tracking-[0.5em] text-lg sm:text-xl font-bold focus:ring-2 focus:ring-accent-blue/30 outline-none transition-all disabled:opacity-50"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-text-primary ml-1">
+                  <label className="block text-xs sm:text-sm font-medium text-text-primary ml-1">
                     New Password
                   </label>
                   <input
@@ -799,7 +804,7 @@ export function Login() {
                     placeholder="Enter your new password"
                     disabled={isUpdatingPassword}
                     autoComplete="new-password"
-                    className="w-full p-3 border border-border rounded-xl bg-bg-surface text-text-primary placeholder:text-text-muted focus:ring-2 focus:ring-accent-blue/30 outline-none transition-all disabled:opacity-50"
+                    className="w-full p-3 h-12 border border-border rounded-xl bg-bg-surface text-sm text-text-primary placeholder:text-text-muted focus:ring-2 focus:ring-accent-blue/30 outline-none transition-all disabled:opacity-50"
                   />
                 </div>
 
@@ -822,7 +827,7 @@ export function Login() {
                       setIsUpdatingPassword(false);
                     }
                   }}
-                  className="w-full flex items-center justify-center gap-2 py-3 mt-2 bg-success text-white rounded-xl font-semibold hover:brightness-110 transition-all shadow-lg shadow-success/20 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 py-3 h-12 mt-2 bg-success text-white rounded-xl text-sm font-semibold hover:brightness-110 transition-all shadow-lg shadow-success/20 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isUpdatingPassword ? (
                     <>
@@ -839,7 +844,7 @@ export function Login() {
                     type="button"
                     disabled={isUpdatingPassword}
                     onClick={() => setResetStep(1)}
-                    className="text-xs text-text-secondary hover:text-accent-blue hover:underline transition-all disabled:opacity-50"
+                    className="text-[11px] sm:text-xs text-text-secondary hover:text-accent-blue hover:underline transition-all disabled:opacity-50"
                   >
                     ← Back to email
                   </button>
@@ -854,7 +859,7 @@ export function Login() {
                 initial={{ opacity: 0, height: 0, marginTop: 0 }}
                 animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
                 exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                className="p-3 bg-danger/10 border border-danger/20 rounded-xl text-sm text-danger text-center font-medium"
+                className="p-3 bg-danger/10 border border-danger/20 rounded-xl text-xs sm:text-sm text-danger text-center font-medium"
               >
                 {resetError}
               </motion.div>

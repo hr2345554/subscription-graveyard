@@ -8,7 +8,7 @@ export const apiRequest = async <T = unknown>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> => {
-  // ❌ REMOVED: Token sessionStorage se nikalne ki zaroorat nahi hai (HttpOnly Cookie handle karegi)
+  // HttpOnly Cookie handle karegi, token ki zaroorat nahi hai
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -21,7 +21,7 @@ export const apiRequest = async <T = unknown>(
   const response = await fetch(`${API_URL}${formattedEndpoint}`, {
     ...options,
     headers,
-    credentials: 'include', // 🌟 YEH SABSE ZAROORI HAI (Cookie bhejne ke liye)
+    credentials: 'include', // 🌟 SABSE ZAROORI (Cookie bhejne ke liye)
   });
 
   const data = await response.json().catch(() => ({}));

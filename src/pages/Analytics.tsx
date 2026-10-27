@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   BarChart,
@@ -14,6 +13,9 @@ import {
   Pie,
   Cell,
 } from 'recharts';
+
+// 🌟 TanStack Query Import
+import { useQuery } from '@tanstack/react-query';
 
 import { api } from '../api/service';
 import type { DashboardStats } from '../types';
@@ -33,49 +35,25 @@ const chartTooltipStyle = {
   borderRadius: '12px',
   color: 'var(--text-primary)',
   boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+  fontSize: '12px', // Mobile friendly font
 };
 
 const axisTickStyle = {
-  fontSize: 12,
+  fontSize: 10, // Chhota font mobile ke liye
   fill: 'var(--text-secondary)',
 };
 
 export function Analytics() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { data: rawStats, isLoading: loading, isError: error } = useQuery({
+    queryKey: ['dashboardStats'],
+    queryFn: () => api.getDashboardStats(),
+  });
 
-  useEffect(() => {
-    let active = true;
-
-    api
-      .getDashboardStats()
-      .then((data) => {
-        if (active) {
-          setStats(data as unknown as DashboardStats); 
-          setError(false);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setError(true);
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
+  const stats = rawStats as unknown as DashboardStats | null;
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        {/* 🌟 UPDATED SKELETON FOR HEADER 🌟 */}
+      <div className="space-y-4 sm:space-y-6">
         <div className="flex items-start gap-3.5">
           <Skeleton className="h-11 w-11 rounded-xl shrink-0" />
           <div className="space-y-2">
@@ -83,10 +61,10 @@ export function Analytics() {
             <Skeleton className="h-4 w-64" />
           </div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Skeleton className="h-[450px] lg:col-span-2" />
-          <Skeleton className="h-80" />
-          <Skeleton className="h-80" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          <Skeleton className="h-[350px] sm:h-[450px] lg:col-span-2" />
+          <Skeleton className="h-64 sm:h-80" />
+          <Skeleton className="h-64 sm:h-80" />
         </div>
       </div>
     );
@@ -107,7 +85,7 @@ export function Analytics() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* 🌟 COMPACT & BALANCED HEADER 🌟 */}
       <MotionDiv
         initial={{ opacity: 0, y: -10 }}
@@ -128,43 +106,47 @@ export function Analytics() {
         </div>
       </MotionDiv>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         
         {/* MERGED: SPENDING TREND + SUMMARY (Full Width) */}
-        <Card className="lg:col-span-2 flex flex-col justify-between overflow-hidden p-6">
+        <Card className="lg:col-span-2 flex flex-col justify-between overflow-hidden p-4 sm:p-6">
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-text-primary">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+              <h3 className="text-base sm:text-lg font-semibold text-text-primary">
                 Spending Trend
               </h3>
-              <span className="text-xs font-medium text-text-muted px-2 py-1 bg-bg-surface rounded-md border border-border/50">
+              <span className="text-[10px] sm:text-xs w-fit font-medium text-text-muted px-2 py-1 bg-bg-surface rounded-md border border-border/50">
                 Last 6 Months
               </span>
             </div>
 
-            <div className="h-72">
+            {/* 🌟 Height adjust ki mobile ke liye */}
+            <div className="h-60 sm:h-72 w-full mt-2">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={stats.monthlyTrend}>
+                <LineChart data={stats.monthlyTrend} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
                   <CartesianGrid
                     strokeDasharray="3 3"
                     stroke="var(--border)"
+                    vertical={false}
                   />
                   <XAxis
                     dataKey="month"
                     tick={axisTickStyle}
                     axisLine={{ stroke: 'var(--border)' }}
-                    tickLine={{ stroke: 'var(--border)' }}
+                    tickLine={false}
+                    tickMargin={10}
                   />
                   <YAxis
                     tick={axisTickStyle}
                     tickFormatter={(value) => `$${value}`}
-                    axisLine={{ stroke: 'var(--border)' }}
-                    tickLine={{ stroke: 'var(--border)' }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={45} // Fixed width taake space na khaye
                   />
                   <Tooltip
                     contentStyle={chartTooltipStyle}
                     itemStyle={{ color: 'var(--text-primary)' }}
-                    labelStyle={{ color: 'var(--text-primary)' }}
+                    labelStyle={{ color: 'var(--text-primary)', fontWeight: 'bold' }}
                   />
                   <Line
                     type="monotone"
@@ -172,13 +154,8 @@ export function Analytics() {
                     name="Spending"
                     stroke="#8757FF"
                     strokeWidth={3}
-                    dot={{
-                      fill: '#8757FF',
-                      stroke: 'var(--bg-elevated)',
-                      strokeWidth: 2,
-                      r: 5,
-                    }}
-                    activeDot={{ r: 7 }}
+                    dot={{ fill: '#8757FF', strokeWidth: 2, r: 3 }}
+                    activeDot={{ r: 6 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -186,44 +163,41 @@ export function Analytics() {
           </div>
 
           {/* Merged Summary Section */}
-          <div className="mt-8 pt-6 border-t border-border/60">
-            <h4 className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-3">
+          <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-border/60">
+            <h4 className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-3 flex items-center gap-2">
               Overview Metrics
+              <span className="bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded text-[9px]">Base: USD</span>
             </h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            
+            {/* 🌟 RESPONSIVE GRID: Mobile par 2, Tab par 3, Desktop par 5 */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-3">
               
-              <div className="flex flex-col gap-1 p-3 bg-bg-surface/50 rounded-xl border border-border/40">
-                <span className="text-xs font-medium text-text-secondary">Active Subs</span>
-                <span className="text-xl font-black text-text-primary">{stats.activeCount}</span>
+              <div className="flex flex-col gap-1 p-2.5 sm:p-3 bg-bg-surface/50 rounded-xl border border-border/40">
+                <span className="text-[10px] sm:text-xs font-medium text-text-secondary">Active Subs</span>
+                <span className="text-base sm:text-xl font-black text-text-primary">{stats.activeCount}</span>
               </div>
 
-              <div className="flex flex-col gap-1 p-3 bg-bg-surface/50 rounded-xl border border-border/40">
-                <span className="text-xs font-medium text-text-secondary">Cancelled</span>
-                <span className="text-xl font-black text-text-primary">{stats.cancelledCount}</span>
+              <div className="flex flex-col gap-1 p-2.5 sm:p-3 bg-bg-surface/50 rounded-xl border border-border/40">
+                <span className="text-[10px] sm:text-xs font-medium text-text-secondary">Cancelled</span>
+                <span className="text-base sm:text-xl font-black text-text-primary">{stats.cancelledCount}</span>
               </div>
 
-              <div className="flex flex-col gap-1 p-3 bg-bg-surface/50 rounded-xl border border-border/40">
-                <span className="text-xs font-medium text-text-secondary">Monthly</span>
-                <span className="text-xl font-black text-accent-blue">{formatCurrency(stats.totalMonthlySpending)}</span>
+              <div className="flex flex-col gap-1 p-2.5 sm:p-3 bg-bg-surface/50 rounded-xl border border-border/40">
+                <span className="text-[10px] sm:text-xs font-medium text-text-secondary">Monthly</span>
+                <span className="text-base sm:text-xl font-black text-accent-blue">{formatCurrency(stats.totalMonthlySpending, 'USD')}</span>
               </div>
 
-              {/* ANNUAL with EST badge */}
-              <div className="flex flex-col gap-1 p-3 bg-bg-surface/50 rounded-xl border border-border/40">
+              <div className="flex flex-col gap-1 p-2.5 sm:p-3 bg-bg-surface/50 rounded-xl border border-border/40">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-text-secondary">Annual</span>
-                  <span 
-                    className="text-[9px] font-bold text-violet-500 bg-violet-500/10 px-1.5 py-0.5 rounded uppercase"
-                    title="Estimated projection based on current monthly spending"
-                  >
-                    Est.
-                  </span>
+                  <span className="text-[10px] sm:text-xs font-medium text-text-secondary">Annual</span>
+                  <span className="text-[8px] sm:text-[9px] font-bold text-violet-500 bg-violet-500/10 px-1 py-0.5 rounded uppercase">Est.</span>
                 </div>
-                <span className="text-xl font-black text-accent-violet">{formatCurrency(stats.totalAnnualSpending)}</span>
+                <span className="text-base sm:text-xl font-black text-accent-violet">{formatCurrency(stats.totalAnnualSpending, 'USD')}</span>
               </div>
 
-              <div className="flex flex-col gap-1 p-3 bg-bg-surface/50 rounded-xl border border-border/40">
-                <span className="text-xs font-medium text-text-secondary">Total Saved</span>
-                <span className="text-xl font-black text-success">{formatCurrency(stats.totalSaved)}</span>
+              <div className="flex flex-col gap-1 p-2.5 sm:p-3 bg-bg-surface/50 rounded-xl border border-border/40 col-span-2 sm:col-span-1">
+                <span className="text-[10px] sm:text-xs font-medium text-text-secondary">Total Saved</span>
+                <span className="text-base sm:text-xl font-black text-success">{formatCurrency(stats.totalSaved, 'USD')}</span>
               </div>
 
             </div>
@@ -231,41 +205,41 @@ export function Analytics() {
         </Card>
 
         {/* MONTHLY SPENDING (Bar Chart) */}
-        <Card>
-          <h3 className="text-lg font-semibold text-text-primary mb-4">
+        <Card className="p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold text-text-primary mb-4">
             Monthly Spending
           </h3>
 
-          <div className="h-80">
+          <div className="h-60 sm:h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats.monthlyTrend}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="var(--border)"
-                />
+              <BarChart data={stats.monthlyTrend} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis
                   dataKey="month"
                   tick={axisTickStyle}
                   axisLine={{ stroke: 'var(--border)' }}
-                  tickLine={{ stroke: 'var(--border)' }}
+                  tickLine={false}
+                  tickMargin={10}
                 />
                 <YAxis
                   tick={axisTickStyle}
                   tickFormatter={(value) => `$${value}`}
-                  axisLine={{ stroke: 'var(--border)' }}
-                  tickLine={{ stroke: 'var(--border)' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={45}
                 />
                 <Tooltip
                   contentStyle={chartTooltipStyle}
                   itemStyle={{ color: 'var(--text-primary)' }}
-                  labelStyle={{ color: 'var(--text-primary)' }}
+                  labelStyle={{ color: 'var(--text-primary)', fontWeight: 'bold' }}
                   cursor={{ fill: 'var(--bg-hover)', opacity: 0.45 }}
                 />
                 <Bar
                   dataKey="amount"
                   name="Spending"
                   fill="#3478FF"
-                  radius={[8, 8, 0, 0]}
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={50} // Mobile par bars moti na hon
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -273,28 +247,26 @@ export function Analytics() {
         </Card>
 
         {/* CATEGORY BREAKDOWN (Pie Chart) */}
-        <Card>
-          <h3 className="text-lg font-semibold text-text-primary mb-4">
+        <Card className="p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold text-text-primary mb-4">
             Category Breakdown
           </h3>
 
-          <div className="h-80 w-full overflow-visible">
+          <div className="h-64 sm:h-80 w-full">
             {stats.categoryBreakdown.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
+                <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                   <Pie
                     data={stats.categoryBreakdown}
                     dataKey="amount"
                     nameKey="category"
                     cx="50%"
                     cy="50%"
-                    outerRadius={95} 
-                    innerRadius={60}
-                    paddingAngle={0} 
-                    labelLine={{ stroke: 'var(--text-muted)', strokeWidth: 1 }}
-                    label={({ category, percent }) =>
-                      `${getCategoryLabel(category)} ${(percent * 100).toFixed(0)}%`
-                    }
+                    outerRadius="75%" // Mobile par auto adjust hoga
+                    innerRadius="45%"
+                    paddingAngle={2} 
+                    labelLine={false}
+                    label={({ percent }) => `${((percent || 0) * 100).toFixed(0)}%`}
                   >
                     {stats.categoryBreakdown.map((entry, i) => (
                       <Cell
@@ -309,15 +281,13 @@ export function Analytics() {
                     contentStyle={chartTooltipStyle}
                     itemStyle={{ color: 'var(--text-primary)' }}
                     labelStyle={{ color: 'var(--text-primary)' }}
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value: number, name: string) => [formatCurrency(value, 'USD'), getCategoryLabel(name)]}
                   />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full">
-                <p className="text-text-muted text-sm text-center py-8">
-                  No category data available yet.
-                </p>
+                <p className="text-text-muted text-sm text-center">No category data available.</p>
               </div>
             )}
           </div>
