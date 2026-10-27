@@ -43,13 +43,50 @@ const mapSubscription = (sub: any): Subscription => {
   return { ...sub, id: sub._id || sub.id };
 };
 
+// ==========================================
+// TYPES
+// ==========================================
+export type SubscriptionStatus = 'active' | 'cancelled' | 'paused' | 'all';
+
+export interface GetSubscriptionsParams {
+  search?: string;
+  status?: SubscriptionStatus | string;  // ✅ flexible for state 'string'
+  page?: number;
+  limit?: number;
+}
+
+export interface SubscriptionsResponse {
+  data: Subscription[];
+  totalPages: number;
+  currentPage: number;
+  totalItems: number;
+}
+
 export const api = {
   // ==========================================
-  // SUBSCRIPTIONS (MY SUBS)
+  // SUBSCRIPTIONS (SEARCH + STATUS + PAGINATION)
   // ==========================================
-  async getSubscriptions(): Promise<Subscription[]> {
-    const data = await apiRequest<any[]>('/subscriptions', { method: 'GET' });
-    return data.map(mapSubscription);
+  async getSubscriptions(params?: GetSubscriptionsParams): Promise<SubscriptionsResponse> {
+    const search = params?.search || '';
+    const status = params?.status || 'active';   // ✅ default
+    const page   = params?.page   || 1;
+    const limit  = params?.limit  || 10;
+
+    // ✅ status bhi query string mein bhejna zaroori hai
+    const queryString =
+      `?search=${encodeURIComponent(search)}` +
+      `&status=${encodeURIComponent(status)}` +
+      `&page=${page}` +
+      `&limit=${limit}`;
+
+    const res = await apiRequest<any>(`/subscriptions${queryString}`, { method: 'GET' });
+
+    return {
+      data: res.data.map(mapSubscription),
+      totalPages: res.totalPages,
+      currentPage: res.currentPage,
+      totalItems: res.totalItems,
+    };
   },
 
   async createSubscription(subData: any): Promise<Subscription> {
@@ -91,33 +128,27 @@ export const api = {
   // SPLIT / SHARED SUBSCRIPTIONS
   // ==========================================
   
-  // 1. Search Registered Users (Frontend Modal ke liye)
   async searchUsers(query: string): Promise<any[]> {
     return apiRequest<any[]>(`/auth/search?q=${query}`, { method: 'GET' });
   },
 
-  // 2. Send Split Invite (Owner)
   async splitSubscription(id: string, sharedWith: { email: string; amountOwed: number; hasPaid: boolean }[]): Promise<Subscription> {
     const data = await apiRequest<any>(`/subscriptions/${id}/split`, { method: 'PATCH', body: JSON.stringify({ sharedWith }) });
     return mapSubscription(data);
   },
 
-  // 3. Get Shared with Me List (Friend)
   async getSharedSubscriptions(): Promise<any[]> {
     return apiRequest<any[]>('/splits/shared-with-me', { method: 'GET' });
   },
 
-  // 4. Accept Invitation
   async acceptSplit(id: string): Promise<any> {
     return apiRequest<any>(`/splits/${id}/accept`, { method: 'PATCH' });
   },
 
-  // 5. Pay Now (Friend)
   async paySplit(id: string): Promise<any> {
     return apiRequest<any>(`/splits/${id}/pay`, { method: 'PATCH' });
   },
 
-  // 6. Remove / Leave Split (Naya Function)
   async removeSplit(id: string): Promise<any> {
     return apiRequest<any>(`/splits/${id}`, { method: 'DELETE' });
   },
@@ -126,16 +157,20 @@ export const api = {
   // DASHBOARD STATS
   // ==========================================
   async getDashboardStats() {
-    const subs = await this.getSubscriptions();
+    // ✅ status: 'all' pass karo — warna dashboard ko sirf active subs milenge
+    //    aur cancelled count 0 dikhega
+    const res = await this.getSubscriptions({ status: 'all', limit: 10000 });
+    const subs = res.data;
+    
     const rates = await getExchangeRates();
 
     const active = subs.filter((s: any) => s.status === 'active');
     const cancelled = subs.filter((s: any) => s.status === 'cancelled');
     
     const totalMonthlySpending = active.reduce((sum, sub: any) => {
-        const monthlyAmount = toMonthly(Number(sub.price) || 0, sub.billingFrequency);
-        const usdAmount = convertToUSD(monthlyAmount, sub.currency, rates);
-        return sum + usdAmount;
+      const monthlyAmount = toMonthly(Number(sub.price) || 0, sub.billingFrequency);
+      const usdAmount = convertToUSD(monthlyAmount, sub.currency, rates);
+      return sum + usdAmount;
     }, 0);
 
     const categoryMap: Record<string, { amount: number, count: number }> = {};

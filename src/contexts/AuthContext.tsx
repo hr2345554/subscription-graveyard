@@ -16,20 +16,18 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, name?: string) => Promise<void>; 
   logout: () => void;
-  updateProfile: (newName: string) => Promise<void>; // 🌟 Naya function
+  updateProfile: (newName: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+// 🌟 Sirf user data load karenge, token nahi (kyunki token HttpOnly cookie mein hai)
 function loadStoredUser(): User | null {
   try {
-    const token = sessionStorage.getItem('sub_graveyard_token');
     const stored = sessionStorage.getItem('sub_graveyard_user');
-
-    if (!token || !stored) return null;
-
+    if (!stored) return null;
     return JSON.parse(stored) as User;
   } catch {
     return null;
@@ -45,28 +43,30 @@ export function AuthProvider({
 
   const login = useCallback(async (email: string, password: string) => {
     const authenticatedUser = await apiLogin(email, password);
+    
+    // 🌟 User ko state aur storage mein save karein
     setUser(authenticatedUser as User);
+    sessionStorage.setItem('sub_graveyard_user', JSON.stringify(authenticatedUser));
   }, []);
 
-  const signup = useCallback(async (email: string, password: string) => {
-    await apiSignup(email, password);
-    sessionStorage.removeItem('sub_graveyard_token');
-    sessionStorage.removeItem('sub_graveyard_user');
+  const signup = useCallback(async (email: string, password: string, name?: string) => {
+    await apiSignup(email, password, name); 
+    // Signup ke baad humne Login page par bhejna hai, toh user ko state mein set nahi kar rahe
   }, []);
 
   const logout = useCallback(() => {
-    apiLogout();
-    sessionStorage.removeItem('sub_graveyard_token');
+    // 🌟 Backend ko call karein taake HttpOnly Cookie clear ho jaye
+    apiLogout(); 
+    
+    // Frontend se user data clear karein
     sessionStorage.removeItem('sub_graveyard_user');
     setUser(null);
   }, []);
 
-  // 🌟 Naya Function: Update Profile
   const updateProfile = useCallback(async (newName: string) => {
-    // Yahan aap apni backend API call laga sakte hain
+    // Backend API call for profile update
     // await api.updateProfile({ name: newName });
     
-    // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     setUser((prevUser) => {
@@ -74,7 +74,7 @@ export function AuthProvider({
       
       const updatedUser = { ...prevUser, name: newName };
       
-      // Session storage mein bhi update karein taake refresh par na jaye
+      // Update storage
       sessionStorage.setItem('sub_graveyard_user', JSON.stringify(updatedUser));
       
       return updatedUser;
@@ -90,7 +90,7 @@ export function AuthProvider({
         login,
         signup,
         logout,
-        updateProfile, // 🌟 Add kiya
+        updateProfile,
       }}
     >
       {children}

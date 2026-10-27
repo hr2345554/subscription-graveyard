@@ -8,12 +8,10 @@ export const apiRequest = async <T = unknown>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> => {
-  // localStorage ki jagah sessionStorage (Aapne sahi kiya hai security ke liye)
-  const token = sessionStorage.getItem('sub_graveyard_token');
+  // ❌ REMOVED: Token sessionStorage se nikalne ki zaroorat nahi hai (HttpOnly Cookie handle karegi)
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers || {}),
   };
 
@@ -23,6 +21,7 @@ export const apiRequest = async <T = unknown>(
   const response = await fetch(`${API_URL}${formattedEndpoint}`, {
     ...options,
     headers,
+    credentials: 'include', // 🌟 YEH SABSE ZAROORI HAI (Cookie bhejne ke liye)
   });
 
   const data = await response.json().catch(() => ({}));

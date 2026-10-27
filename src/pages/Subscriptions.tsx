@@ -23,12 +23,12 @@ import {
   getDaysUntilRenewal,
   getCategoryLabel,
 } from '../utils/calculations';
-import { Plus, Search, RefreshCw, ChevronDown, X, Trash2, Ban, Users, Pencil, CheckCircle2, ArrowRight, Check, CreditCard } from 'lucide-react';
+import { Plus, Search, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, X, Trash2, Ban, Users, Pencil, CheckCircle2, ArrowRight, Check, CreditCard } from 'lucide-react';
 import { SubscriptionLogo } from '../components/ui/SubscriptionLogo';
-import { SplitModal } from '../components/SplitModal'; 
+import { SplitModal } from '../components/SplitModal';
 
 // ==========================================
-// 3D TILT CARD COMPONENT (Subtle Version)
+// 3D TILT CARD COMPONENT
 // ==========================================
 const TiltCard = ({ children, onClick, isSelectable }: { children: ReactNode, onClick?: () => void, isSelectable?: boolean }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -123,14 +123,20 @@ const frequencies: { value: BillingFrequency; label: string }[] = [
 ];
 
 export function Subscriptions() {
-  // 🌟 FIX 1: State reset to 'my-subs' always, removed localStorage
   const [activeTab, setActiveTab] = useState<'my-subs' | 'shared'>('my-subs');
 
   const [subs, setSubs] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // 🌟 Search & Pagination States
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('active'); 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+
   const [sharedSubs, setSharedSubs] = useState<any[]>([]);
   const [loadingShared, setLoadingShared] = useState(false);
 
@@ -142,18 +148,40 @@ export function Subscriptions() {
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const [selectedSubs, setSelectedSubs] = useState<string[]>([]);
 
+  // 🌟 1. Debounce Logic (Search type karne ke baad 500ms wait)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCurrentPage(1);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  // 🌟 2. Backend se Data Load karna (Search + Pagination + Filter)
   const loadSubscriptions = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const data = await api.getSubscriptions();
-      setSubs(data);
+      const res = await api.getSubscriptions({
+        search: debouncedSearch,
+        status: filterStatus,
+        page: currentPage,
+        limit: 10,
+      });
+      
+      setSubs(res.data);
+      setTotalPages(res.totalPages);
+      setTotalItems(res.totalItems);
     } catch {
       setError('Could not load subscriptions. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [debouncedSearch, filterStatus, currentPage]);
+
+  useEffect(() => {
+    void loadSubscriptions();
+  }, [loadSubscriptions]);
 
   const loadSharedSubs = useCallback(async () => {
     setLoadingShared(true);
@@ -168,10 +196,6 @@ export function Subscriptions() {
   }, []);
 
   useEffect(() => {
-    void loadSubscriptions();
-  }, [loadSubscriptions]);
-
-  useEffect(() => {
     if (activeTab === 'shared') {
       void loadSharedSubs();
     }
@@ -179,12 +203,7 @@ export function Subscriptions() {
 
   useEffect(() => {
     setSelectedSubs([]);
-  }, [search, filterStatus, activeTab]);
-
-  const filtered = subs.filter((sub) => {
-    if (filterStatus !== 'all' && sub.status !== filterStatus) return false;
-    return sub.name.toLowerCase().includes(search.trim().toLowerCase());
-  });
+  }, [search, filterStatus, activeTab, currentPage]);
 
   const handleAdd = async (data: SubscriptionFormData) => {
     try {
@@ -260,10 +279,10 @@ export function Subscriptions() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedSubs.length === filtered.length) {
+    if (selectedSubs.length === subs.length) {
       setSelectedSubs([]);
     } else {
-      setSelectedSubs(filtered.map((s) => s.id));
+      setSelectedSubs(subs.map((s) => s.id));
     }
   };
 
@@ -319,7 +338,7 @@ export function Subscriptions() {
           )}
         </div>
 
-        {/* 🌟 FIX 2: ALAG-ALAG RECTANGULAR TOGGLES 🌟 */}
+        {/* TABS */}
         <div className="flex flex-wrap items-center gap-4">
           <button
             onClick={() => setActiveTab('my-subs')}
@@ -367,7 +386,7 @@ export function Subscriptions() {
             <div className="relative">
               <select
                 value={filterStatus}
-                onChange={(event) => setFilterStatus(event.target.value)}
+                onChange={(event) => { setFilterStatus(event.target.value); setCurrentPage(1); }}
                 className="h-full w-full appearance-none rounded-2xl border border-border/50 bg-bg-elevated/60 backdrop-blur-xl py-4 pl-11 pr-10 text-sm font-bold text-text-primary transition-all duration-300 hover:bg-bg-elevated focus:outline-none focus:ring-2 focus:ring-emerald-500/50 cursor-pointer sm:w-[180px]"
               >
                 <option value="active">Active</option>
@@ -392,7 +411,7 @@ export function Subscriptions() {
                   </p>
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
                     <button onClick={toggleSelectAll} className="h-9 px-4 rounded-xl border border-border/60 bg-bg-surface text-xs font-bold text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-all">
-                      {selectedSubs.length === filtered.length ? 'Deselect All' : 'Select All'}
+                      {selectedSubs.length === subs.length ? 'Deselect All' : 'Select All'}
                     </button>
                     <button onClick={exitDeleteMode} className="h-9 px-4 rounded-xl border border-border/60 bg-bg-surface text-xs font-bold text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-all">
                       Cancel
@@ -405,15 +424,15 @@ export function Subscriptions() {
               ) : (
                 <>
                   <p className="text-xs font-semibold text-text-secondary">
-                    Showing <span className="text-text-primary">{filtered.length}</span> {filtered.length === 1 ? 'result' : 'results'}
+                    Showing <span className="text-text-primary">{subs.length}</span> out of {totalItems} results
                   </p>
                   <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
                     {(search || filterStatus !== 'active') && (
-                      <button type="button" onClick={() => { setSearch(''); setFilterStatus('active'); }} className="text-xs font-bold text-emerald-500 transition-colors hover:text-emerald-400 flex items-center gap-1">
+                      <button type="button" onClick={() => { setSearch(''); setFilterStatus('active'); setCurrentPage(1); }} className="text-xs font-bold text-emerald-500 transition-colors hover:text-emerald-400 flex items-center gap-1">
                         Clear filters <X className="w-3 h-3" />
                       </button>
                     )}
-                    {filtered.length > 0 && (
+                    {subs.length > 0 && (
                       <button onClick={() => setIsDeleteMode(true)} className="group relative flex items-center gap-2 rounded-xl bg-rose-500/10 px-4 py-2 text-xs font-bold text-rose-500 transition-all duration-300 hover:bg-rose-500 hover:text-white hover:shadow-[0_0_20px_rgba(244,63,94,0.4)] border border-rose-500/20 hover:border-rose-500">
                         <Trash2 size={14} className="transition-transform group-hover:scale-110 group-hover:-rotate-12" />
                         Delete Subscriptions
@@ -438,7 +457,7 @@ export function Subscriptions() {
           {!loading && !error && (
             <div className="flex flex-col gap-5">
               <AnimatePresence mode="popLayout">
-                {filtered.map((sub, index) => {
+                {subs.map((sub, index) => {
                   const isSelected = selectedSubs.includes(sub.id);
                   return (
                     <motion.div key={sub.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: Math.min(index * 0.05, 0.2), duration: 0.3 }} className="w-full">
@@ -475,8 +494,18 @@ export function Subscriptions() {
                           <div className="xl:w-[160px] p-5 flex flex-row xl:flex-col items-center justify-between xl:justify-center xl:border-l-2 border-t-2 xl:border-t-0 border-slate-300 dark:border-slate-600">
                             <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider xl:mb-1.5">Renewal</p>
                             <div className="text-right xl:text-center">
-                              <p className="text-sm font-bold text-text-primary">{sub.status === 'active' ? formatDate(sub.renewalDate) : 'Cancelled'}</p>
-                              {sub.status === 'active' && (<p className="text-[10px] font-semibold text-emerald-500 mt-0.5">in {getDaysUntilRenewal(sub.renewalDate)} days</p>)}
+                              {/* ✅ FIX: renewalDate undefined safe */}
+                              <p className="text-sm font-bold text-text-primary">
+                                {sub.status === 'active'
+                                  ? (sub.renewalDate ? formatDate(sub.renewalDate) : 'N/A')
+                                  : 'Cancelled'}
+                              </p>
+                              {/* ✅ FIX: getDaysUntilRenewal safe */}
+                              {sub.status === 'active' && sub.renewalDate && (
+                                <p className="text-[10px] font-semibold text-emerald-500 mt-0.5">
+                                  in {getDaysUntilRenewal(sub.renewalDate)} days
+                                </p>
+                              )}
                             </div>
                           </div>
 
@@ -502,11 +531,34 @@ export function Subscriptions() {
             </div>
           )}
 
-          {!loading && !error && filtered.length === 0 && (
+          {!loading && !error && subs.length === 0 && (
             <div className="glass-card px-4 py-12 text-center rounded-[24px]">
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-bg-surface"><Search className="h-5 w-5 text-text-muted" /></div>
-              <h2 className="font-semibold text-text-primary">No active subscriptions</h2>
-              <p className="mt-1 text-sm text-text-secondary">Add a new subscription or check your cancelled list.</p>
+              <h2 className="font-semibold text-text-primary">No subscriptions found</h2>
+              <p className="mt-1 text-sm text-text-secondary">Add a new subscription or try changing your filters.</p>
+            </div>
+          )}
+
+          {/* 🌟 PAGINATION CONTROLS 🌟 */}
+          {!loading && !error && totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-border/50 pt-5 mt-6">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1 px-4 py-2 rounded-lg border border-border bg-bg-surface text-sm font-bold text-text-primary disabled:opacity-50 hover:bg-bg-hover transition-all"
+              >
+                <ChevronLeft size={16} /> Previous
+              </button>
+              <span className="text-sm font-bold text-text-secondary">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="flex items-center gap-1 px-4 py-2 rounded-lg border border-border bg-bg-surface text-sm font-bold text-text-primary disabled:opacity-50 hover:bg-bg-hover transition-all"
+              >
+                Next <ChevronRight size={16} />
+              </button>
             </div>
           )}
         </motion.div>
@@ -568,7 +620,7 @@ export function Subscriptions() {
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Renews</p>
-                        <p className="text-xs font-bold text-text-primary">{formatDate(sub.renewalDate)}</p>
+                        <p className="text-xs font-bold text-text-primary">{sub.renewalDate ? formatDate(sub.renewalDate) : 'N/A'}</p>
                       </div>
                     </div>
 
@@ -634,7 +686,7 @@ export function Subscriptions() {
 }
 
 // ==========================================
-// STYLISH ADD/EDIT FORM (WITH AUTO-FILL & ROBUST DATE LOGIC)
+// STYLISH ADD/EDIT FORM
 // ==========================================
 function AddForm({
   onSubmit,
@@ -674,7 +726,6 @@ function AddForm({
   const watchedStartDate = watch('startDate');
   const watchedCycle = watch('billingFrequency');
 
-  // Auto-fill URL
   useEffect(() => {
     if (watchedName) {
       const selectedApp = popularApps.find(
@@ -686,10 +737,8 @@ function AddForm({
     }
   }, [watchedName, setValue]);
 
-  // 🌟 FIX 3: ROBUST DATE CALCULATION LOGIC (No more shifting/overflow issues) 🌟
   useEffect(() => {
     if (watchedStartDate && watchedCycle) {
-      // Force local timezone parsing to avoid UTC shifts
       const [year, month, day] = watchedStartDate.split('-').map(Number);
       if (!year || !month || !day) return;
 
@@ -708,12 +757,10 @@ function AddForm({
         newDate.setFullYear(newDate.getFullYear() + 1);
       }
 
-      // Handle overflow: Jan 31 + 1 month should be Feb 28/29, NOT March 3
       if (newDate.getDate() !== day && watchedCycle !== 'weekly') {
-        newDate.setDate(0); // Set to last day of previous month
+        newDate.setDate(0);
       }
 
-      // Format back to YYYY-MM-DD safely
       const y = newDate.getFullYear();
       const m = String(newDate.getMonth() + 1).padStart(2, '0');
       const d = String(newDate.getDate()).padStart(2, '0');

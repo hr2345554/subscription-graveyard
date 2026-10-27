@@ -1,33 +1,15 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { forgotPassword, resetPassword } from '../api/auth';
 import { Modal } from '../components/ui/Modal';
 import { 
-  AnimatePresence, 
-  motion, 
-  useReducedMotion,
-  useMotionValue,
-  useSpring,
-  useTransform,
-  useMotionTemplate
+  AnimatePresence, motion, useReducedMotion, useMotionValue, 
+  useSpring, useTransform, useMotionTemplate 
 } from 'motion/react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  ArrowRight,
-  Check,
-  Eye,
-  EyeOff,
-  LockKeyhole,
-  Mail,
-  ShieldCheck,
-  Skull,
-  Loader2,
+  ArrowRight, Check, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, Skull, Loader2, User
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useNavigate } from 'react-router-dom';
@@ -35,7 +17,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 
-// 🌟 ANIMATIONS & EFFECTS
 import { AmbientBackground } from '../components/animations/AmbientBackground';
 import { GlitchText } from '../components/animations/GlitchText';
 import { DataRunners } from '../components/animations/DataRunners';
@@ -43,25 +24,21 @@ import './auth.css';
 
 type AuthMode = 'login' | 'signup';
 
+// 🌟 Updated Schema to accept Username and Confirm Password (optional for Login)
 const authSchema = z.object({
-  email: z
-    .string()
-    .trim()
-    .min(1, 'Please enter your email address')
-    .email("That email doesn't look right"),
+  email: z.string().trim().min(1, 'Please enter your email address').email("That email doesn't look right"),
+  username: z.string().optional(),
   password: z.string().min(1, 'Please enter your password'),
+  confirmPassword: z.string().optional(),
 });
 
 type AuthValues = z.infer<typeof authSchema>;
 
+// 🌟 Updated createUser to take the username
 function createUser(email: string, name?: string, avatar?: string) {
   const cleanEmail = email.trim().toLowerCase();
-
   return {
-    id:
-      typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `user_${Date.now()}`,
+    id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `user_${Date.now()}`,
     email: cleanEmail,
     name: name?.trim() || cleanEmail.split('@')[0] || 'Subscription Manager',
     ...(avatar ? { avatar } : {}),
@@ -71,32 +48,19 @@ function createUser(email: string, name?: string, avatar?: string) {
 }
 
 function getPasswordStrength(password: string) {
-  if (!password) {
-    return { score: 0, label: '', className: '' };
-  }
-
+  if (!password) return { score: 0, label: '', className: '' };
   let score = 0;
-
   if (password.length >= 6) score += 1;
   if (password.length >= 10) score += 1;
   if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score += 1;
   if (/\d/.test(password)) score += 1;
   if (/[^A-Za-z0-9]/.test(password)) score += 1;
 
-  if (score <= 2) {
-    return { score: 1, label: 'Weak', className: 'weak' };
-  }
-
-  if (score <= 3) {
-    return { score: 2, label: 'Okay', className: 'okay' };
-  }
-
+  if (score <= 2) return { score: 1, label: 'Weak', className: 'weak' };
+  if (score <= 3) return { score: 2, label: 'Okay', className: 'okay' };
   return { score: 3, label: 'Strong', className: 'strong' };
 }
 
-// ==========================================
-// MAGNETIC BUTTON COMPONENT
-// ==========================================
 const MagneticButton = ({ children, className, ...props }: any) => {
   const ref = useRef<HTMLButtonElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -138,24 +102,17 @@ export function Login() {
   const { resolvedTheme } = useTheme();
   const reduceMotion = useReducedMotion();
 
-  // ==========================================
-  // 3D & PARALLAX LOGIC
-  // ==========================================
   const mainRef = useRef<HTMLElement>(null);
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
-
   const springConfig = { damping: 25, stiffness: 120, mass: 0.5 };
   const smoothX = useSpring(mouseX, springConfig);
   const smoothY = useSpring(mouseY, springConfig);
 
-  // 🌟 BACKGROUND PARALLAX
   const bgX = useTransform(smoothX, [-1, 1], [-30, 30]);
   const bgY = useTransform(smoothY, [-1, 1], [-30, 30]);
-
   const rotateX = useTransform(smoothY, [-1, 1], [4, -4]);
   const rotateY = useTransform(smoothX, [-1, 1], [-4, 4]);
-
   const glowX = useTransform(smoothX, [-1, 1], ['0%', '100%']);
   const glowY = useTransform(smoothY, [-1, 1], ['0%', '100%']);
   const glowBackground = useMotionTemplate`radial-gradient(circle at ${glowX} ${glowY}, rgba(139, 92, 246, 0.15), transparent 60%)`;
@@ -166,9 +123,7 @@ export function Login() {
     mouseX.set((e.clientX - left) / width * 2 - 1);
     mouseY.set((e.clientY - top) / height * 2 - 1);
   };
-  // ==========================================
 
-  // Smart Real-time Greeting Logic
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 5) return 'Burning midnight oil';
@@ -180,8 +135,8 @@ export function Login() {
 
   const [mode, setMode] = useState<AuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  // Reset Password States
   const [showReset, setShowReset] = useState(false);
   const [resetStep, setResetStep] = useState(1);
   const [resetEmail, setResetEmail] = useState('');
@@ -190,33 +145,28 @@ export function Login() {
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
   
-  // Loading States
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   const [submitError, setSubmitError] = useState('');
   const [signupSuccess, setSignupSuccess] = useState('');
+  const [emailNotRegistered, setEmailNotRegistered] = useState(false);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
-  const [successUser, setSuccessUser] = useState<
-    ReturnType<typeof createUser> | null
-  >(null);
+  const [successUser, setSuccessUser] = useState<ReturnType<typeof createUser> | null>(null);
 
   const finishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
-    register,
-    handleSubmit,
-    watch,
-    reset,
-    clearErrors,
+    register, handleSubmit, watch, reset, clearErrors,
     formState: { errors, touchedFields },
   } = useForm<AuthValues>({
     resolver: zodResolver(authSchema),
     mode: 'onChange',
     reValidateMode: 'onChange',
-    defaultValues: { email: '', password: '' },
+    defaultValues: { email: '', username: '', password: '', confirmPassword: '' },
   });
 
   const email = watch('email') || '';
@@ -249,15 +199,14 @@ export function Login() {
 
   useEffect(() => {
     return () => {
-      if (finishTimerRef.current) {
-        clearTimeout(finishTimerRef.current);
-      }
+      if (finishTimerRef.current) clearTimeout(finishTimerRef.current);
     };
   }, []);
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError('');
     setSignupSuccess('');
+    setEmailNotRegistered(false);
     setIsLoading(true);
 
     try {
@@ -265,19 +214,28 @@ export function Login() {
         await login(values.email, values.password);
         finishSignIn(createUser(values.email));
       } else {
-        await signup(values.email, values.password);
-        setMode('login');
-        setSignupSuccess('Account created successfully! Please log in.');
-        reset({ email: values.email, password: '' });
-      }
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Unable to authenticate. Please try again.';
+        // 🌟 Validation for Signup fields
+        if (!values.username || values.username.trim().length < 3) {
+          throw new Error('Username must be at least 3 characters long.');
+        }
+        if (values.password !== values.confirmPassword) {
+          throw new Error('Passwords do not match.');
+        }
 
-      setSubmitError(message);
-      setShakeKey((value) => value + 1);
+        // Pass username as the 3rd argument
+        await signup(values.email, values.password, values.username);
+        finishSignIn(createUser(values.email, values.username)); // Direct Login (Auto-fill name)
+      }
+    } catch (error: any) {
+      const message = error instanceof Error ? error.message : 'Unable to authenticate. Please try again.';
+      
+      if (mode === 'login' && (message.includes('registered') || error.code === 'EMAIL_NOT_FOUND')) {
+        setEmailNotRegistered(true);
+        setSubmitError('This email is not registered.');
+      } else {
+        setSubmitError(message);
+        setShakeKey((value) => value + 1);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -288,36 +246,29 @@ export function Login() {
     setSubmitError('');
     setSignupSuccess('');
     setShowPassword(false);
+    setShowConfirmPassword(false);
+    setEmailNotRegistered(false);
     clearErrors();
-    reset({ email: '', password: '' });
+    reset({ email: '', username: '', password: '', confirmPassword: '' });
   };
 
   return (
     <main
       ref={mainRef}
       onMouseMove={handleMouseMove}
-      className={`auth-page relative ${
-        resolvedTheme === 'light' ? 'auth-light' : 'auth-dark'
-      }`}
+      className={`auth-page relative ${resolvedTheme === 'light' ? 'auth-light' : 'auth-dark'}`}
       style={{ perspective: 1200 }}
     >
-      {/* 🌟 FIXED BACKGROUND WITH WARP SPEED 🌟 */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <motion.div 
-          style={{ x: bgX, y: bgY }} 
-          className="absolute -inset-10" 
-        >
+        <motion.div style={{ x: bgX, y: bgY }} className="absolute -inset-10">
            <AmbientBackground warp={isSuccess} />
         </motion.div>
       </div>
 
-      {/* 🌟 NEW: TRON DATA RUNNERS 🌟 */}
       <DataRunners smoothX={smoothX} smoothY={smoothY} />
 
       <section
-        className={`auth-scene ${
-          submitError ? 'is-error' : ''
-        } ${isSuccess ? 'is-success' : ''}`}
+        className={`auth-scene ${submitError ? 'is-error' : ''} ${isSuccess ? 'is-success' : ''}`}
         aria-label="Subscription app animation"
       >
         <div className="auth-scene-overlay" />
@@ -371,9 +322,7 @@ export function Login() {
               <motion.div
                 key="success"
                 className="auth-success"
-                initial={
-                  reduceMotion ? false : { opacity: 0, y: 24, scale: 0.97 }
-                }
+                initial={reduceMotion ? false : { opacity: 0, y: 24, scale: 0.97 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: reduceMotion ? 0.15 : 0.45 }}
@@ -403,25 +352,14 @@ export function Login() {
                   rotateY: reduceMotion ? 0 : rotateY, 
                   transformStyle: "preserve-3d" 
                 }}
-                initial={
-                  reduceMotion ? false : { opacity: 0, y: 38, scale: 0.97 }
-                }
+                initial={reduceMotion ? false : { opacity: 0, y: 38, scale: 0.97 }}
                 animate={{
-                  opacity: 1,
-                  y: 0,
-                  scale: 1,
-                  x:
-                    shakeKey > 0 && !reduceMotion
-                      ? [0, -8, 7, -5, 3, 0]
-                      : 0,
+                  opacity: 1, y: 0, scale: 1,
+                  x: shakeKey > 0 && !reduceMotion ? [0, -8, 7, -5, 3, 0] : 0,
                 }}
                 transition={{
                   opacity: { duration: 0.5 },
-                  y: {
-                    duration: reduceMotion ? 0.15 : 0.75,
-                    type: 'spring',
-                    bounce: 0.24,
-                  },
+                  y: { duration: reduceMotion ? 0.15 : 0.75, type: 'spring', bounce: 0.24 },
                   scale: { duration: 0.55 },
                   x: { duration: 0.38 },
                 }}
@@ -433,7 +371,6 @@ export function Login() {
 
                 <div style={{ transform: "translateZ(30px)" }} className="relative z-10 h-full">
                   
-                  {/* 🌟 STAR KEPT & REPOSITIONED FOR MOBILE 🌟 */}
                   <div className="absolute top-0 right-0 z-20">
                     <motion.div
                       animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.1, 1] }}
@@ -446,7 +383,6 @@ export function Login() {
                   </div>
 
                   <div className="auth-card-top relative">
-                    {/* 🌟 FIXED MOBILE HEADER 🌟 */}
                     <div className="flex items-center gap-2.5 sm:gap-3 mb-4 pr-6">
                       <div className="flex shrink-0 items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-black text-white shadow-lg" aria-hidden="true">
                         <Skull size={22} strokeWidth={2.5} className="sm:w-7 sm:h-7" />
@@ -459,27 +395,38 @@ export function Login() {
                     </div>
 
                     <span className="auth-kicker">
-                      {mode === 'login'
-                        ? 'YOUR SUBSCRIPTIONS AWAIT'
-                        : 'START FRESH'}
+                      {mode === 'login' ? 'YOUR SUBSCRIPTIONS AWAIT' : 'START FRESH'}
                     </span>
                     
                     <h2>
-                      {mode === 'login'
-                        ? `${getGreeting()}.`
-                        : 'Create your account'}
+                      {mode === 'login' ? `${getGreeting()}.` : 'Create your account'}
                     </h2>
                   </div>
 
                   <form onSubmit={onSubmit} noValidate autoComplete="off" className="auth-form flex flex-col gap-4">
+                    
+                    {/* 🌟 USERNAME FIELD (Signup Only) */}
+                    {mode === 'signup' && (
+                      <motion.div
+                        className={`auth-field ${errors.username ? 'has-error' : ''}`}
+                        initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: reduceMotion ? 0 : 0.1 }}
+                      >
+                        <User className="auth-field-icon" size={17} />
+                        <input
+                          id="auth-username"
+                          type="text"
+                          autoComplete="off" 
+                          placeholder=" "
+                          {...register('username')}
+                        />
+                        <label htmlFor="auth-username">Username</label>
+                      </motion.div>
+                    )}
+
                     <motion.div
-                      className={`auth-field ${
-                        errors.email ? 'has-error' : ''
-                      } ${
-                        touchedFields.email && !errors.email && email
-                          ? 'is-valid'
-                          : ''
-                      }`}
+                      className={`auth-field ${errors.email ? 'has-error' : ''} ${touchedFields.email && !errors.email && email ? 'is-valid' : ''}`}
                       initial={reduceMotion ? false : { opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: reduceMotion ? 0 : 0.12 }}
@@ -514,9 +461,7 @@ export function Login() {
                     </AnimatePresence>
 
                     <motion.div
-                      className={`auth-field ${
-                        errors.password ? 'has-error' : ''
-                      }`}
+                      className={`auth-field ${errors.password ? 'has-error' : ''}`}
                       initial={reduceMotion ? false : { opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: reduceMotion ? 0 : 0.2 }}
@@ -536,11 +481,7 @@ export function Login() {
                         type="button"
                         onClick={() => setShowPassword((value) => !value)}
                       >
-                        {showPassword ? (
-                          <EyeOff size={17} />
-                        ) : (
-                          <Eye size={17} />
-                        )}
+                        {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                       </button>
                     </motion.div>
 
@@ -558,6 +499,33 @@ export function Login() {
                       )}
                     </AnimatePresence>
 
+                    {/* 🌟 CONFIRM PASSWORD FIELD (Signup Only) */}
+                    {mode === 'signup' && (
+                      <motion.div
+                        className={`auth-field ${errors.confirmPassword ? 'has-error' : ''}`}
+                        initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: reduceMotion ? 0 : 0.25 }}
+                      >
+                        <ShieldCheck className="auth-field-icon" size={17} />
+                        <input
+                          id="auth-confirm-password"
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          autoComplete="new-password" 
+                          placeholder=" "
+                          {...register('confirmPassword')}
+                        />
+                        <label htmlFor="auth-confirm-password">Confirm Password</label>
+                        <button
+                          className="password-visibility"
+                          type="button"
+                          onClick={() => setShowConfirmPassword((value) => !value)}
+                        >
+                          {showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                        </button>
+                      </motion.div>
+                    )}
+
                     <div className="min-h-[24px]">
                       {mode === 'signup' && password.length > 0 && (
                         <motion.div
@@ -570,28 +538,17 @@ export function Login() {
                             {[1, 2, 3].map((segment) => (
                               <span
                                 key={segment}
-                                className={
-                                  segment <= strength.score
-                                    ? `strength-segment active ${strength.className}`
-                                    : 'strength-segment'
-                                }
+                                className={segment <= strength.score ? `strength-segment active ${strength.className}` : 'strength-segment'}
                               />
                             ))}
                           </div>
-                          <span className={`strength-label ${strength.className}`}>
-                            {strength.label}
-                          </span>
+                          <span className={`strength-label ${strength.className}`}>{strength.label}</span>
                         </motion.div>
                       )}
 
                       {mode === 'login' && (
                         <div className="flex w-full items-center justify-center gap-2 mt-1 select-none">
-                          {/* 🌟 YAHAN FONT-SEMIBOLD AUR TEXT-SECONDARY ADD KIYA HAI 🌟 */}
-                          <span className="text-xs font-semibold text-text-secondary">
-                            Forgot password?
-                          </span>
-                          
-                          {/* 🌟 CHOTA AUR FIXED HEIGHT TOGGLE BUTTON 🌟 */}
+                          <span className="text-xs font-semibold text-text-secondary">Forgot password?</span>
                           <button
                             type="button"
                             onClick={() => {
@@ -619,8 +576,7 @@ export function Login() {
                           animate={{ opacity: 1, y: 0, height: 'auto' }}
                           exit={{ opacity: 0, y: -6, height: 0 }}
                         >
-                          <Check size={16} /> 
-                          {signupSuccess}
+                          <Check size={16} /> {signupSuccess}
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -639,6 +595,24 @@ export function Login() {
                         </motion.div>
                       )}
                     </AnimatePresence>
+
+                    {emailNotRegistered && (
+                      <motion.button
+                        type="button"
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        onClick={() => {
+                          setMode('signup');
+                          setSubmitError('');
+                          setEmailNotRegistered(false);
+                          const currentEmail = watch('email');
+                          reset({ email: currentEmail, username: '', password: '', confirmPassword: '' });
+                        }}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 rounded-xl font-bold transition-all hover:bg-violet-200 dark:hover:bg-violet-900/50"
+                      >
+                        Create Account with {watch('email')} <ArrowRight size={16} />
+                      </motion.button>
+                    )}
 
                     <MagneticButton
                       className="auth-submit w-full h-[56px] rounded-2xl mt-1"
@@ -662,15 +636,11 @@ export function Login() {
 
                   <div className="auth-mode-switch">
                     <span>
-                      {mode === 'login'
-                        ? 'New around here?'
-                        : 'Already have an account?'}
+                      {mode === 'login' ? 'New around here?' : 'Already have an account?'}
                     </span>
                     <button
                       type="button"
-                      onClick={() =>
-                        changeMode(mode === 'login' ? 'signup' : 'login')
-                      }
+                      onClick={() => changeMode(mode === 'login' ? 'signup' : 'login')}
                     >
                       {mode === 'login' ? 'Sign up' : 'Log in'}
                     </button>
@@ -890,10 +860,8 @@ export function Login() {
               </motion.div>
             )}
           </AnimatePresence>
-          
         </form>
       </Modal>
-
     </main>
   );
 }

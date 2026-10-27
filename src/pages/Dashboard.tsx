@@ -11,17 +11,16 @@ import {
 import { api } from '../api/service';
 import type { Subscription as AppSubscription } from '../types';
 import { SubscriptionLogo } from '../components/ui/SubscriptionLogo';
+import { CustomSelect } from '../components/ui/CustomSelect';
 
 interface DashboardSubscription extends AppSubscription {
   billingCycle?: string;
   isWorthIt?: boolean | null;
 }
 
-// 🔥 Improved Cycle Detection
 const getCycle = (sub: DashboardSubscription): string =>
   String(sub.billingFrequency || sub.billingCycle || 'monthly').toLowerCase();
 
-// 🔥 Improved Math Logic
 const getMonthlyAmount = (sub: DashboardSubscription): number => {
   const price = Number(sub.price) || 0;
   const cycle = getCycle(sub);
@@ -30,7 +29,7 @@ const getMonthlyAmount = (sub: DashboardSubscription): number => {
   if (cycle.includes('quarter')) return price / 3;
   if (cycle.includes('week')) return (price * 52) / 12;
   if (cycle.includes('day')) return (price * 365) / 12;
-  return price; // Monthly by default
+  return price; 
 };
 
 const currencySymbol = (currency: string): string => {
@@ -85,7 +84,7 @@ export default function Dashboard() {
       const code = currency.toUpperCase();
       if (code === 'USD') return amount;
       const rate = exchangeRates?.[code];
-      if (!rate || !Number.isFinite(rate)) return null; // Skip if rate unavailable
+      if (!rate || !Number.isFinite(rate)) return null;
       return amount / rate;
     },
     [exchangeRates],
@@ -95,9 +94,10 @@ export default function Dashboard() {
     let mounted = true;
     const loadSubscriptionsData = async () => {
       try {
-        const result = await api.getSubscriptions();
+        // ✅ FIX: status 'all' + limit bada, phir .data nikaalo
+        const result = await api.getSubscriptions({ status: 'all', limit: 1000 });
         if (mounted) {
-          setSubscriptions(result as DashboardSubscription[]);
+          setSubscriptions(result.data as DashboardSubscription[]);
           setError('');
           setLastSuccessfulSync(new Date());
         }
@@ -268,17 +268,12 @@ export default function Dashboard() {
     <main className="min-h-screen bg-transparent px-4 pt-2 pb-8 text-text-primary sm:px-6 sm:pt-4 lg:px-8 lg:pt-6 transition-colors duration-300">
       <div className="mx-auto w-full max-w-[1600px] space-y-7">
         
-        {/* 🌟 COMPACT & BALANCED HEADER 🌟 */}
         <header className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
           <div className="flex items-center gap-3.5">
-            
-            {/* Smaller Icon Box */}
             <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl">
               <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/40 to-transparent dark:from-white/10 dark:to-transparent border border-white/50 dark:border-white/10 shadow-sm backdrop-blur-sm" />
               <span className="relative z-10 text-2xl drop-shadow-md">🏠</span>
             </div>
-
-            {/* Perfectly Aligned Text Container */}
             <div className="flex flex-col justify-center">
               <h1 className="text-2xl font-black tracking-tight text-text-primary sm:text-3xl leading-tight">
                 Dashboard<span className="text-violet-500">.</span>
@@ -290,35 +285,25 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* FILTER TOOLBAR */}
         <section className="flex flex-col gap-4 rounded-2xl border border-border bg-bg-elevated p-4 sm:flex-row sm:items-end">
-          <div className="flex flex-wrap gap-3">
-            <label className="flex min-w-[170px] flex-col gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-text-secondary">Category</span>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="min-h-11 rounded-xl border border-border bg-bg-surface px-3 text-sm text-text-primary outline-none transition-colors focus:border-violet-500"
-              >
-                <option value="All categories">All categories</option>
-                {availableCategories.map((category) => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-            </label>
-            <label className="flex min-w-[150px] flex-col gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-text-secondary">Currency</span>
-              <select
-                value={selectedCurrency}
-                onChange={(e) => setSelectedCurrency(e.target.value)}
-                className="min-h-11 rounded-xl border border-border bg-bg-surface px-3 text-sm text-text-primary outline-none transition-colors focus:border-violet-500"
-              >
-                <option value="All currencies">All currencies</option>
-                {availableCurrencies.map((currency) => (
-                  <option key={currency} value={currency}>{currency}</option>
-                ))}
-              </select>
-            </label>
+          <div className="flex flex-wrap gap-4">
+            
+            <CustomSelect
+              label="Category"
+              options={['All categories', ...availableCategories]}
+              value={selectedCategory}
+              onChange={setSelectedCategory}
+              className="min-w-[170px]"
+            />
+
+            <CustomSelect
+              label="Currency"
+              options={['All currencies', ...availableCurrencies]}
+              value={selectedCurrency}
+              onChange={setSelectedCurrency}
+              className="min-w-[150px]"
+            />
+
           </div>
         </section>
 
@@ -329,7 +314,6 @@ export default function Dashboard() {
         )}
 
         <section className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12">
-          {/* MAIN CARD */}
           <article className="relative isolate min-h-[310px] overflow-hidden rounded-[28px] bg-gradient-to-br from-[#17132f] via-[#282052] to-[#45258c] p-6 text-white shadow-xl shadow-violet-950/10 sm:p-8 lg:col-span-7 lg:p-10">
             <div className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full border border-white/10" />
             <div className="pointer-events-none absolute -right-6 -top-10 h-52 w-52 rounded-full border border-white/10" />
@@ -412,7 +396,6 @@ export default function Dashboard() {
             </div>
           </article>
 
-          {/* SPEND BY CATEGORY */}
           <article className="rounded-[28px] border border-border bg-bg-elevated p-6 sm:p-8 lg:col-span-5 flex flex-col relative overflow-hidden">
             <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-violet-500/10 blur-3xl" />
             <div className="flex items-center justify-between mb-6">
@@ -427,7 +410,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* MERGED WORTH IT CHECK-IN */}
             <AnimatePresence>
               {!loading && subToRate && (
                 <motion.div
@@ -472,7 +454,6 @@ export default function Dashboard() {
               )}
             </AnimatePresence>
 
-            {/* 🌟 SCROLLABLE AREA FOR CATEGORIES 🌟 */}
             <div className="flex-1 flex flex-col justify-start space-y-6 max-h-[350px] overflow-y-auto pr-2 pb-1">
               {categoriesData.map(([category, amount], index) => {
                 const numericAmount = Number(amount) || 0;
@@ -681,7 +662,6 @@ export default function Dashboard() {
                         <div className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ease-out ${isUrgent ? 'bg-gradient-to-r from-rose-600 to-rose-400' : isSoon ? 'bg-gradient-to-r from-amber-500 to-orange-400' : 'bg-gradient-to-r from-emerald-500 to-teal-400'}`} style={{ width: `${progressPercent}%` }}>
                           <div className="absolute inset-0 bg-white/20 h-[1px] rounded-t-full" />
                         </div>
-                        {/* 🌟 TYPO FIXED HERE: progressPercent 🌟 */}
                         <div className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-[1.5px] border-white shadow-md transition-all duration-1000 ease-out z-10 ${isUrgent ? 'bg-rose-500 shadow-[0_0_8px_rgba(225,29,72,0.6)]' : isSoon ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'}`} style={{ left: `calc(${progressPercent}% - 6px)` }} />
                       </div>
                     </div>
